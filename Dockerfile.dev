@@ -7,7 +7,7 @@ COPY tsconfig.json ./
 COPY .npmrc ./
 COPY src ./src
 RUN ls -a
-RUN npm install npm@latest && npm install
+RUN npm install
 
 EXPOSE 4006
 
