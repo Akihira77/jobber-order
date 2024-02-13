@@ -29,7 +29,7 @@ import { Channel } from "amqplib";
 import { Server } from "socket.io";
 import { consumeReviewFanoutMessage } from "@order/queues/order.consumer";
 
-const PORT = 4005;
+const PORT = 4006;
 
 const log: Logger = winstonLogger(
     `${ELASTIC_SEARCH_URL}`,
