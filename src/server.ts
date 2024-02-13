@@ -10,7 +10,12 @@ import {
     winstonLogger
 } from "@Akihira77/jobber-shared";
 import { Logger } from "winston";
-import { API_GATEWAY_URL, ELASTIC_SEARCH_URL, JWT_TOKEN } from "@order/config";
+import {
+    API_GATEWAY_URL,
+    ELASTIC_SEARCH_URL,
+    JWT_TOKEN,
+    PORT
+} from "@order/config";
 import {
     Application,
     NextFunction,
@@ -28,8 +33,6 @@ import { createConnection } from "@order/queues/connection";
 import { Channel } from "amqplib";
 import { Server } from "socket.io";
 import { consumeReviewFanoutMessage } from "@order/queues/order.consumer";
-
-const PORT = 4006;
 
 const log: Logger = winstonLogger(
     `${ELASTIC_SEARCH_URL}`,
@@ -138,7 +141,7 @@ function startHttpServer(httpServer: http.Server): void {
     try {
         log.info(`Order server has started with pid ${process.pid}`);
 
-        httpServer.listen(PORT, () => {
+        httpServer.listen(Number(PORT), () => {
             log.info(`Order server running on port ${PORT}`);
         });
     } catch (error) {
