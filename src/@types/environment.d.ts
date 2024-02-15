@@ -14,8 +14,8 @@ declare global {
             CLOUD_NAME: string;
             CLOUD_API_KEY: string;
             CLOUD_API_SECRET: string;
-            REDIS_HOST: string;
             ELASTIC_SEARCH_URL: string;
+            ELASTIC_APM_SERVICE_NAME: string;
             ELASTIC_APM_SERVER_URL: string;
             ELASTIC_APM_SECRET_TOKEN: string;
         }
