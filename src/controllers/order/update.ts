@@ -3,7 +3,7 @@ import {
     BadRequestError,
     IDeliveredWork,
     IOrderDocument,
-    uploads
+    uploads,
 } from "@Akihira77/jobber-shared";
 import { STRIPE_API_PRIVATE_KEY } from "@order/config";
 import { orderUpdateSchema } from "@order/schemas/order.schema";
@@ -114,14 +114,18 @@ export async function sellerDeliverOrder(
     const randomCharacters: string = randomBytes.toString("hex");
 
     if (file) {
+        if (parseInt(req.body.fileSize) > 10485760) {
+            throw new BadRequestError("File is too large. Maximum is 10Mb", "Update deliverOrder() method");
+        }
+
         const result =
-            req.body.fileType === "zip"
-                ? await uploads(file, `${randomCharacters}.zip`)
-                : await uploads(file);
+                req.body.fileType === "zip"
+                    ? await uploads(file, `${randomCharacters}.zip`)
+                    : await uploads(file);
 
         if (!result?.public_id) {
             throw new BadRequestError(
-                "File uplaod error. Try again",
+                result?.message ?? "File upload error. Try again",
                 "Update deliverOrder() method"
             );
         }

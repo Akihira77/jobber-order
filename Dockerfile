@@ -3,10 +3,11 @@ FROM node:18-alpine as builder
 # stage 1
 # npm install
 WORKDIR /app
-COPY package.json ./
+COPY package*.json ./
 COPY tsconfig.json ./
 COPY .npmrc ./
 COPY src ./src
+RUN npm install -g npm@latest
 RUN npm ci && npm run build
 
 # stage 2
@@ -16,7 +17,7 @@ FROM node:18-alpine
 WORKDIR /app
 # with alpine we can install curl with apk command
 RUN apk add --no-cache curl
-COPY package.json ./
+COPY package*.json ./
 COPY tsconfig.json ./
 COPY .npmrc ./
 RUN npm install -g pm2

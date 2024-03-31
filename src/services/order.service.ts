@@ -164,7 +164,7 @@ export async function approveOrder(
         ongoingJobs: data.ongoingJobs,
         completedJobs: data.completedJobs,
         totalEarnings: data.totalEarnings, // this is the price the seller earned for lastest order delivered
-        recentDelivery: `${new Date()}`,
+        recentDelivery: new Date()?.toString(),
         type: "approve-order"
     };
 
@@ -187,7 +187,7 @@ export async function approveOrder(
             buyerId: data.buyerId,
             purchasedGigs: data.purchasedGigs
         }),
-        "Approved order deatils sent to notification service"
+        "Approved order details sent to notification service"
     );
 
     sendNotification(

@@ -107,6 +107,7 @@ function orderErrorHandler(app: Application): void {
 
             if (error instanceof CustomError) {
                 res.status(error.statusCode).json(error.serializeErrors());
+                return;
             }
             next();
         }

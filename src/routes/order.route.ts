@@ -6,8 +6,8 @@ import * as update from "@order/controllers/order/update";
 const router = express.Router();
 
 export function orderRoutes(): Router {
-    router.get("/:orderId", get.byBuyerId);
-    router.get("/buyer/:buyerId", get.byOrderId);
+    router.get("/:orderId", get.byOrderId);
+    router.get("/buyer/:buyerId", get.byBuyerId);
     router.get("/seller/:sellerId", get.bySellerId);
 
     router.post("/", create.order);
