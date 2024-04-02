@@ -1,14 +1,5 @@
-import { winstonLogger } from "@Akihira77/jobber-shared";
-import { ELASTIC_SEARCH_URL } from "@order/config";
 import { Channel } from "amqplib";
-import { Logger } from "winston";
 import { createConnection } from "@order/queues/connection";
-
-const log: Logger = winstonLogger(
-    `${ELASTIC_SEARCH_URL}`,
-    "orderServiceProducer",
-    "debug"
-);
 
 export async function publishDirectMessage(
     channel: Channel,
@@ -26,9 +17,9 @@ export async function publishDirectMessage(
 
         channel.publish(exchangeName, routingKey, Buffer.from(message));
 
-        log.info(logMessage);
+        console.log(logMessage);
     } catch (error) {
-        log.error(
+        console.log(
             "OrderService QueueProducer publishDirectMessage() method error:",
             error
         );

@@ -6,16 +6,9 @@ import jwt from "jsonwebtoken";
 import {
     CustomError,
     IAuthPayload,
-    IErrorResponse,
-    winstonLogger
+    IErrorResponse
 } from "@Akihira77/jobber-shared";
-import { Logger } from "winston";
-import {
-    API_GATEWAY_URL,
-    ELASTIC_SEARCH_URL,
-    JWT_TOKEN,
-    PORT
-} from "@order/config";
+import { API_GATEWAY_URL, JWT_TOKEN, NODE_ENV, PORT } from "@order/config";
 import {
     Application,
     NextFunction,
@@ -27,18 +20,13 @@ import {
 import hpp from "hpp";
 import helmet from "helmet";
 import cors from "cors";
-import { checkConnection } from "@order/elasticsearch";
+// import { checkConnection } from "@order/elasticsearch";
 import { appRoutes } from "@order/routes";
 import { createConnection } from "@order/queues/connection";
 import { Channel } from "amqplib";
 import { Server } from "socket.io";
 import { consumeReviewFanoutMessage } from "@order/queues/order.consumer";
 
-const log: Logger = winstonLogger(
-    `${ELASTIC_SEARCH_URL}`,
-    "orderServer",
-    "debug"
-);
 export let orderChannel: Channel;
 export let socketIOOrderObject: Server;
 
@@ -47,7 +35,7 @@ export function start(app: Application): void {
     standardMiddleware(app);
     routesMiddleware(app);
     startQueues();
-    startElasticSearch();
+    // startElasticSearch();
     orderErrorHandler(app);
     startServer(app);
 }
@@ -91,9 +79,9 @@ async function startQueues(): Promise<void> {
     await consumeReviewFanoutMessage(orderChannel);
 }
 
-function startElasticSearch(): void {
-    checkConnection();
-}
+// function startElasticSearch(): void {
+//     checkConnection();
+// }
 
 function orderErrorHandler(app: Application): void {
     app.use(
@@ -103,11 +91,8 @@ function orderErrorHandler(app: Application): void {
             res: Response,
             next: NextFunction
         ) => {
-            log.error(`OrderService ${error.comingFrom}:`, error);
-
             if (error instanceof CustomError) {
                 res.status(error.statusCode).json(error.serializeErrors());
-                return;
             }
             next();
         }
@@ -121,7 +106,7 @@ async function startServer(app: Application): Promise<void> {
 
         startHttpServer(httpServer);
     } catch (error) {
-        log.error("OrderService startServer() method error:", error);
+        console.log(error);
     }
 }
 
@@ -133,19 +118,21 @@ async function createSocketIO(httpServer: http.Server): Promise<Server> {
         }
     });
 
-    log.info("OrderService Socket connected");
+    console.log("OrderService Socket connected");
 
     return io;
 }
 
 function startHttpServer(httpServer: http.Server): void {
     try {
-        log.info(`Order server has started with pid ${process.pid}`);
+        console.log(`Order server has started with pid ${process.pid}`);
 
-        httpServer.listen(Number(PORT), () => {
-            log.info(`Order server running on port ${PORT}`);
-        });
+        if (NODE_ENV !== "test") {
+            httpServer.listen(Number(PORT), () => {
+                console.log(`Order server running on port ${PORT}`);
+            });
+        }
     } catch (error) {
-        log.error("OrderService startHttpServer() method error:", error);
+        console.log(error);
     }
 }

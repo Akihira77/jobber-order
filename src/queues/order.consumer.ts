@@ -1,15 +1,7 @@
-import { winstonLogger } from "@Akihira77/jobber-shared";
-import { ELASTIC_SEARCH_URL, exchangeNamesAndRoutingKeys } from "@order/config";
+import { exchangeNamesAndRoutingKeys } from "@order/config";
 import { Channel, ConsumeMessage } from "amqplib";
-import { Logger } from "winston";
 import { createConnection } from "@order/queues/connection";
 import { updateOrderReview } from "@order/services/order.service";
-
-const log: Logger = winstonLogger(
-    `${ELASTIC_SEARCH_URL}`,
-    "orderServiceConsumer",
-    "debug"
-);
 
 export async function consumeReviewFanoutMessage(
     channel: Channel
@@ -49,7 +41,7 @@ export async function consumeReviewFanoutMessage(
             }
         );
     } catch (error) {
-        log.error(
+        console.log(
             "OrderService consumeReviewFanoutMessage() method error:",
             error
         );

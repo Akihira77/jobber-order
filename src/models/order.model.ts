@@ -29,6 +29,7 @@ const orderSchema: Schema = new Schema(
         buyerImage: { type: String, required: true },
         status: { type: String, required: true },
         orderId: { type: String, required: true, index: true },
+        invoiceId: { type: String, required: true, index: true },
         quantity: { type: Number, required: true },
         price: { type: Number, required: true },
         serviceFee: { type: Number, default: 0 },

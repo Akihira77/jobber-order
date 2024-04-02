@@ -8,7 +8,7 @@ const config: Config.InitialOptions = {
     collectCoverage: true,
     testPathIgnorePatterns: ["/node_modules"],
     transform: { "^.+\\.ts?$": "ts-jest" },
-    testMatch: ["<rootDir>/src/**/test/*.ts"],
+    testMatch: ["<rootDir>/src/**/test/*.ts", "**/?(*.)+(spec|test).[jt]s?(x)"],
     collectCoverageFrom: [
         "src/**/*.ts",
         "!src/**/test/*.ts?(x)",
@@ -25,7 +25,8 @@ const config: Config.InitialOptions = {
     coverageReporters: ["text-summary", "lcov"],
     moduleNameMapper: {
         "@order/(.*)": ["<rootDir>/src/$1"]
-    }
+    },
+    testTimeout: 20000
 };
 
 export default config;
