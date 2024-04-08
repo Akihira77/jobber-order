@@ -1,5 +1,6 @@
 import {
     BadRequestError,
+    CustomError,
     IDeliveredWork,
     IExtendedDelivery,
     IOrderDocument,
@@ -18,13 +19,21 @@ import { orderSchema } from "@order/schemas/order.schema";
 
 export async function getOrderByOrderId(
     orderId: string
-): Promise<IOrderDocument | null> {
+): Promise<IOrderDocument> {
     try {
         const order = await OrderModel.findOne({ orderId }).lean().exec();
 
+        if (!order) {
+            throw new NotFoundError("Order is not found", "getOrderByOrderId() method");
+        }
+
         return order;
     } catch (error) {
-        throw new NotFoundError("Order not found", "getOrderByOrderId()");
+        console.log(error);
+        if (error instanceof CustomError) {
+            throw error;
+        }
+        throw new Error("Unexpected error occured. Please try again.");
     }
 }
 
@@ -91,7 +100,7 @@ export async function createOrder(
         const { buyerService, notificationService } =
             exchangeNamesAndRoutingKeys;
 
-        await publishDirectMessage(
+        publishDirectMessage(
             orderChannel,
             buyerService.seller.exchangeName,
             buyerService.seller.routingKey,
@@ -99,7 +108,7 @@ export async function createOrder(
             "Details sent to users service"
         );
 
-        await publishDirectMessage(
+        publishDirectMessage(
             orderChannel,
             notificationService.order.exchangeName,
             notificationService.order.routingKey,
@@ -115,7 +124,7 @@ export async function createOrder(
 
         return orderData;
     } catch (error) {
-        if (error) {
+        if (error instanceof CustomError) {
             throw error;
         }
 
@@ -150,7 +159,7 @@ export async function cancelOrder(
         const { buyerService } = exchangeNamesAndRoutingKeys;
 
         // update seller info
-        await publishDirectMessage(
+        publishDirectMessage(
             orderChannel,
             buyerService.seller.exchangeName,
             buyerService.seller.routingKey,
@@ -162,7 +171,7 @@ export async function cancelOrder(
         );
 
         // update buyer info
-        await publishDirectMessage(
+        publishDirectMessage(
             orderChannel,
             buyerService.buyer.exchangeName,
             buyerService.buyer.routingKey,
@@ -182,7 +191,7 @@ export async function cancelOrder(
 
         return orderData;
     } catch (error) {
-        if (error) {
+        if (error instanceof CustomError) {
             console.log(error);
             throw error;
         }
@@ -227,7 +236,7 @@ export async function approveOrder(
             };
 
             // update seller info
-            await publishDirectMessage(
+            publishDirectMessage(
                 orderChannel,
                 buyerService.seller.exchangeName,
                 buyerService.seller.routingKey,
@@ -236,7 +245,7 @@ export async function approveOrder(
             );
 
             // update buyer info
-            await publishDirectMessage(
+            publishDirectMessage(
                 orderChannel,
                 buyerService.buyer.exchangeName,
                 buyerService.buyer.routingKey,
@@ -257,8 +266,8 @@ export async function approveOrder(
             return orderData;
         }
     } catch (error) {
-        if (error) {
-            console.log(error);
+        console.log(error);
+        if (error instanceof CustomError) {
             throw error;
         }
         throw new Error("Unexpected error occured. Please try again.");
@@ -306,7 +315,7 @@ export async function deliverOrder(
             };
 
             // sent email
-            await publishDirectMessage(
+            publishDirectMessage(
                 orderChannel,
                 notificationService.order.exchangeName,
                 notificationService.order.routingKey,
@@ -323,8 +332,8 @@ export async function deliverOrder(
 
         return orderData;
     } catch (error) {
-        if (error) {
-            console.log(error);
+        console.log(error);
+        if (error instanceof CustomError) {
             throw error;
         }
 
@@ -370,7 +379,7 @@ export async function requestDeliveryExtension(
         };
 
         // sent email
-        await publishDirectMessage(
+        publishDirectMessage(
             orderChannel,
             notificationService.order.exchangeName,
             notificationService.order.routingKey,
@@ -386,8 +395,8 @@ export async function requestDeliveryExtension(
 
         return orderData;
     } catch (error) {
-        if (error) {
-            console.log(error);
+        console.log(error);
+        if (error instanceof CustomError) {
             throw error;
         }
 
@@ -442,7 +451,7 @@ export async function approveExtensionDeliveryDate(
         };
 
         // sent email
-        await publishDirectMessage(
+        publishDirectMessage(
             orderChannel,
             notificationService.order.exchangeName,
             notificationService.order.routingKey,
@@ -458,8 +467,8 @@ export async function approveExtensionDeliveryDate(
 
         return orderData;
     } catch (error) {
-        if (error) {
-            console.log(error);
+        console.log(error);
+        if (error instanceof CustomError) {
             throw error;
         }
 
@@ -506,7 +515,7 @@ export async function rejectExtensionDeliveryDate(
         };
 
         // sent email
-        await publishDirectMessage(
+        publishDirectMessage(
             orderChannel,
             notificationService.order.exchangeName,
             notificationService.order.routingKey,
@@ -522,8 +531,8 @@ export async function rejectExtensionDeliveryDate(
 
         return orderData;
     } catch (error) {
-        if (error) {
-            console.log(error);
+        console.log(error);
+        if (error instanceof CustomError) {
             throw error;
         }
 
@@ -596,8 +605,8 @@ export async function updateOrderReview(
 
         return orderData;
     } catch (error) {
-        if (error) {
-            console.log(error);
+        console.log(error);
+        if (error instanceof CustomError) {
             throw error;
         }
 

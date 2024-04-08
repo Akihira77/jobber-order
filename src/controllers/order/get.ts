@@ -21,5 +21,5 @@ export async function bySellerId(req: Request, res: Response): Promise<void> {
 export async function byBuyerId(req: Request, res: Response): Promise<void> {
     const orders = await getOrdersByBuyerId(req.params.buyerId);
 
-    res.status(StatusCodes.OK).json({ message: "Buyers orders", orders });
+    res.status(StatusCodes.OK).json({ message: "Buyer orders", orders });
 }

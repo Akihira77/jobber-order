@@ -20,9 +20,9 @@ export async function intent(req: Request, res: Response): Promise<void> {
     if (customer.data.length === 0) {
         const createdCustomer: Stripe.Response<Stripe.Customer> =
             await stripe.customers.create({
-                email: `${req.currentUser!.email}`,
+                email: req.currentUser!.email,
                 metadata: {
-                    buyerId: `${req.body.buyerId}`
+                    buyerId: req.body.buyerId
                 }
             });
         customerId = createdCustomer.id;
@@ -51,7 +51,12 @@ export async function intent(req: Request, res: Response): Promise<void> {
             clientSecret: paymentIntent.client_secret!,
             paymentIntentId: paymentIntent.id
         });
+        return;
     }
+
+    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+        message: "Unexpected error occured. Please try again",
+    });
 }
 
 export async function order(req: Request, res: Response): Promise<void> {

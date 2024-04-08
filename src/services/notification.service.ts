@@ -1,4 +1,5 @@
 import {
+    CustomError,
     IOrderDocument,
     IOrderNotifcation,
     NotFoundError
@@ -70,7 +71,7 @@ export async function markNotificationAsRead(
         return notification;
     } catch (error) {
         console.log(error);
-        if (error) {
+        if (error instanceof CustomError) {
             throw error;
         }
 
@@ -123,10 +124,6 @@ export async function deleteOrderNotifications(
         return result.deletedCount > 0;
     } catch (error) {
         console.log(error);
-        if (error) {
-            throw error;
-        }
-
         throw new Error("Unexpected error occured. Please try again.");
     }
 }

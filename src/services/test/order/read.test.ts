@@ -12,9 +12,7 @@ describe("Read/Get method", () => {
 
     describe("getOrderByOrderId() method", () => {
         it("NotFound case", async () => {
-            const result = await getOrderByOrderId("wrong-id");
-
-            expect(result).toBeNull();
+            await expect(getOrderByOrderId("wrong-id")).rejects.toThrow("Order is not found");
         });
 
         it("Found case", async () => {

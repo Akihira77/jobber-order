@@ -26,6 +26,7 @@ import { createConnection } from "@order/queues/connection";
 import { Channel } from "amqplib";
 import { Server } from "socket.io";
 import { consumeReviewFanoutMessage } from "@order/queues/order.consumer";
+import { StatusCodes } from "http-status-codes";
 
 export let orderChannel: Channel;
 export let socketIOOrderObject: Server;
@@ -92,7 +93,9 @@ function orderErrorHandler(app: Application): void {
             next: NextFunction
         ) => {
             if (error instanceof CustomError) {
-                res.status(error.statusCode).json(error.serializeErrors());
+                res.status(
+                    error.statusCode ?? StatusCodes.INTERNAL_SERVER_ERROR
+                ).json(error.serializeErrors());
             }
             next();
         }

@@ -6,7 +6,9 @@ export async function notifications(
     req: Request,
     res: Response
 ): Promise<void> {
-    const notifications = await getNotificationByUserToId(req.params.userId);
+    const notifications = await getNotificationByUserToId(
+        req.params.userToName
+    );
 
     res.status(StatusCodes.OK).json({
         message: "Notifications",
