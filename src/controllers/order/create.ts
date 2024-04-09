@@ -55,7 +55,7 @@ export async function intent(req: Request, res: Response): Promise<void> {
 }
 
 export async function order(req: Request, res: Response): Promise<void> {
-    const { error } = await Promise.resolve(orderSchema.validate(req.body));
+    const { error } = orderSchema.validate(req.body);
 
     if (error?.details) {
         throw new BadRequestError(

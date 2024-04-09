@@ -52,13 +52,18 @@ export async function createOrder(
         ongoingJobs: 1,
         type: "create-order"
     };
-    const emailMessageDetails: IOrderMessage = {
+    const emailMessageDetails: IOrderMessage & {
+        buyerEmail: string;
+        sellerEmail: string;
+    } = {
         orderId: data.orderId,
         invoiceId: data.invoiceId,
         orderDue: `${data.offer.newDeliveryDate}`,
         amount: `${data.price}`,
         buyerUsername: lowerCase(data.buyerUsername),
+        buyerEmail: data.buyerEmail,
         sellerUsername: lowerCase(data.sellerUsername),
+        sellerEmail: data.sellerEmail,
         title: data.offer.gigTitle,
         description: data.offer.description,
         requirements: data.requirements,
@@ -67,17 +72,17 @@ export async function createOrder(
         orderUrl: `${CLIENT_URL}/orders/${data.orderId}/activities`,
         template: "orderPlaced"
     };
-    const { buyerService, notificationService } = exchangeNamesAndRoutingKeys;
+    const { usersService, notificationService } = exchangeNamesAndRoutingKeys;
 
     await publishDirectMessage(
         orderChannel,
-        buyerService.seller.exchangeName,
-        buyerService.seller.routingKey,
+        usersService.seller.exchangeName,
+        usersService.seller.routingKey,
         JSON.stringify(messageDetails),
         "Details sent to users service"
     );
 
-    await publishDirectMessage(
+    publishDirectMessage(
         orderChannel,
         notificationService.order.exchangeName,
         notificationService.order.routingKey,
@@ -109,13 +114,13 @@ export async function cancelOrder(
         },
         { new: true }
     ).exec()) as IOrderDocument;
-    const { buyerService } = exchangeNamesAndRoutingKeys;
+    const { usersService } = exchangeNamesAndRoutingKeys;
 
     // update seller info
     await publishDirectMessage(
         orderChannel,
-        buyerService.seller.exchangeName,
-        buyerService.seller.routingKey,
+        usersService.seller.exchangeName,
+        usersService.seller.routingKey,
         JSON.stringify({ sellerId: data.sellerId, type: "cancel-order" }),
         "Cancelled order details sent to users service"
     );
@@ -123,8 +128,8 @@ export async function cancelOrder(
     // update buyer info
     await publishDirectMessage(
         orderChannel,
-        buyerService.buyer.exchangeName,
-        buyerService.buyer.routingKey,
+        usersService.buyer.exchangeName,
+        usersService.buyer.routingKey,
         JSON.stringify({
             type: "cancel-order",
             buyerId: data.buyerId,
@@ -157,7 +162,7 @@ export async function approveOrder(
         },
         { new: true }
     ).exec()) as IOrderDocument;
-    const { buyerService } = exchangeNamesAndRoutingKeys;
+    const { usersService } = exchangeNamesAndRoutingKeys;
     const messageDetails: IOrderMessage = {
         sellerId: data.sellerId,
         buyerId: data.buyerId,
@@ -171,8 +176,8 @@ export async function approveOrder(
     // update seller info
     await publishDirectMessage(
         orderChannel,
-        buyerService.seller.exchangeName,
-        buyerService.seller.routingKey,
+        usersService.seller.exchangeName,
+        usersService.seller.routingKey,
         JSON.stringify(messageDetails),
         "Approved order details sent to users service"
     );
@@ -180,8 +185,8 @@ export async function approveOrder(
     // update buyer info
     await publishDirectMessage(
         orderChannel,
-        buyerService.buyer.exchangeName,
-        buyerService.buyer.routingKey,
+        usersService.buyer.exchangeName,
+        usersService.buyer.routingKey,
         JSON.stringify({
             type: "purchased-gigs",
             buyerId: data.buyerId,
