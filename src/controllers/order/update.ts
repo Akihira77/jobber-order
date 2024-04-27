@@ -23,7 +23,7 @@ const stripe: Stripe = new Stripe(STRIPE_API_PRIVATE_KEY!, {
     typescript: true
 });
 
-export async function cancel(req: Request, res: Response): Promise<void> {
+export async function sellerCancelling(req: Request, res: Response): Promise<void> {
     await stripe.refunds.create({
         payment_intent: `${req.body.paymentIntentId}`
     });
@@ -37,7 +37,7 @@ export async function cancel(req: Request, res: Response): Promise<void> {
     });
 }
 
-export async function requestExtension(
+export async function sellerRequestExtension(
     req: Request,
     res: Response
 ): Promise<void> {
@@ -48,7 +48,7 @@ export async function requestExtension(
     if (error?.details) {
         throw new BadRequestError(
             error.details[0].message,
-            "Update reqeustExtension() method"
+            "Update sellerRequestExtension() method"
         );
     }
 
@@ -60,12 +60,12 @@ export async function requestExtension(
     );
 
     res.status(StatusCodes.OK).json({
-        message: "Order delivery request",
+        message: "Order extension request",
         order
     });
 }
 
-export async function deliveryDate(req: Request, res: Response): Promise<void> {
+export async function buyerResponseExtensionRequest(req: Request, res: Response): Promise<void> {
     const { error } = await Promise.resolve(
         orderUpdateSchema.validate(req.body)
     );
@@ -73,7 +73,7 @@ export async function deliveryDate(req: Request, res: Response): Promise<void> {
     if (error?.details) {
         throw new BadRequestError(
             error.details[0].message,
-            "Update deliveryDate() method"
+            "Update buyerResponseExtensionRequest() method"
         );
     }
 
@@ -110,14 +110,14 @@ export async function sellerDeliverOrder(
 ): Promise<void> {
     const { orderId } = req.params;
     let file: string = req.body.file;
-    const randomBytes: Buffer = await Promise.resolve(crypto.randomBytes(20));
+    const randomBytes: Buffer = crypto.randomBytes(20);
     const randomCharacters: string = randomBytes.toString("hex");
 
     if (file) {
         if (parseInt(req.body.fileSize) > 10485760) {
             throw new BadRequestError(
                 "File is too large. Maximum is 10Mb",
-                "Update deliverOrder() method"
+                "Update sellerDeliverOrder() method"
             );
         }
 
@@ -129,7 +129,7 @@ export async function sellerDeliverOrder(
         if (!result?.public_id) {
             throw new BadRequestError(
                 result?.message ?? "File upload error. Try again",
-                "Update deliverOrder() method"
+                "Update sellerDeliverOrder() method"
             );
         }
 

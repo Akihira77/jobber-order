@@ -14,9 +14,9 @@ export function orderRoutes(): Router {
     router.post("/create-payment-intent", create.intent);
 
     router.put("/approve-order/:orderId", update.buyerApproveOrder);
-    router.put("/cancel/:orderId", update.cancel);
-    router.put("/gig/:type/:orderId", update.deliveryDate);
-    router.put("/extension/:orderId", update.requestExtension);
+    router.put("/cancel/:orderId", update.sellerCancelling);
+    router.put("/gig/:type/:orderId", update.buyerResponseExtensionRequest);
+    router.put("/extension/:orderId", update.sellerRequestExtension);
     router.put("/deliver-order/:orderId", update.sellerDeliverOrder);
 
     return router;
