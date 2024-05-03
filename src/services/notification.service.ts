@@ -69,7 +69,7 @@ export async function markNotificationAsRead(
             {
                 new: true
             }
-        ).exec();
+        ).lean().exec();
 
         if (!notification) {
             throw new NotFoundError(

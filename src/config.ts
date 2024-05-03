@@ -27,7 +27,7 @@ export const {
     ENABLE_APM
 } = process.env;
 
-if (ENABLE_APM == "1") {
+if (NODE_ENV === "production" && ENABLE_APM == "1") {
     require("elastic-apm-node").start({
         serviceName: `${ELASTIC_APM_SERVICE_NAME}`,
         serverUrl: ELASTIC_APM_SERVER_URL,

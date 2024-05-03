@@ -165,7 +165,7 @@ export async function cancelOrder(
                 }
             },
             { new: true }
-        ).exec();
+        ).lean().exec();
 
         if (!orderData) {
             throw new NotFoundError(
@@ -232,7 +232,7 @@ export async function approveOrder(
                 }
             },
             { new: true }
-        ).exec();
+        ).lean().exec();
 
         if (!orderData) {
             throw new NotFoundError(
@@ -258,7 +258,7 @@ export async function approveOrder(
             usersService.seller.exchangeName,
             usersService.seller.routingKey,
             JSON.stringify(messageDetails),
-            "Approved order details sent to users service"
+            "Approved order details sent to users service (seller)"
         );
 
         // update buyer info
@@ -271,7 +271,7 @@ export async function approveOrder(
                 buyerId: data.buyerId,
                 purchasedGigs: data.purchasedGigs
             }),
-            "Approved order details sent to users service"
+            "Approved order details sent to users service (buyer)"
         );
 
         sendNotification(
@@ -309,7 +309,7 @@ export async function deliverOrder(
                 }
             },
             { new: true }
-        ).exec();
+        ).lean().exec();
 
         if (!orderData) {
             throw new NotFoundError(
@@ -373,7 +373,7 @@ export async function requestDeliveryExtension(
                 }
             },
             { new: true }
-        ).exec();
+        ).lean().exec();
 
         if (!orderData) {
             throw new NotFoundError(
@@ -448,7 +448,7 @@ export async function approveExtensionDeliveryDate(
                 }
             },
             { new: true }
-        ).exec();
+        ).lean().exec();
 
         if (!orderData) {
             throw new NotFoundError(
@@ -516,7 +516,7 @@ export async function rejectExtensionDeliveryDate(
                 }
             },
             { new: true }
-        ).exec();
+        ).lean().exec();
 
         if (!orderData) {
             throw new NotFoundError(
@@ -578,6 +578,8 @@ export async function updateOrderReview(
             );
         }
 
+        const order = await getOrderByOrderId(data.orderId!)
+
         const orderData = await OrderModel.findOneAndUpdate(
             { orderId: data.orderId },
             {
@@ -592,9 +594,12 @@ export async function updateOrderReview(
                                     : new Date()
                             },
                             events: {
-                                buyerReview: data.createdAt
-                                    ? new Date(data.createdAt)
-                                    : new Date()
+                                placeOrder: order?.events.placeOrder,
+                                requirements: order?.events.requirements,
+                                orderStarted: order?.events.orderStarted,
+                                orderDelivered: order?.events.orderDelivered,
+                                buyerReview: data.createdAt ? new Date(data.createdAt) : new Date(),
+                                deliveryDateUpdate: order?.events.deliveryDateUpdate
                             }
                         }
                         : {
@@ -606,14 +611,18 @@ export async function updateOrderReview(
                                     : new Date()
                             },
                             events: {
-                                sellerReview: data.createdAt
-                                    ? new Date(data.createdAt)
-                                    : new Date()
+                                placeOrder: order?.events.placeOrder,
+                                requirements: order?.events.requirements,
+                                orderStarted: order?.events.orderStarted,
+                                orderDelivered: order?.events.orderDelivered,
+                                sellerReview: data.createdAt ? new Date(data.createdAt) : new Date(),
+                                deliveryDateUpdate: order?.events.deliveryDateUpdate
                             }
+
                         }
             },
-            { new: true }
-        ).exec();
+            { new: true, upsert: true }
+        ).lean().exec();
 
         if (!orderData) {
             throw new NotFoundError(

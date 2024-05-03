@@ -41,9 +41,12 @@ export async function consumeReviewFanoutMessage(
         await channel.consume(
             jobberQueue.queue,
             async (message: ConsumeMessage | null) => {
-                await updateOrderReview(
-                    JSON.parse(message!.content.toString())
-                );
+                const { type } = JSON.parse(message!.content.toString())
+
+                if (type === "addReview") {
+                    const { messageDetails } = JSON.parse(message!.content.toString())
+                    await updateOrderReview(messageDetails);
+                }
 
                 channel.ack(message!);
             }

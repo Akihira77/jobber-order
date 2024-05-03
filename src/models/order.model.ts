@@ -67,11 +67,6 @@ const orderSchema: Schema = new Schema(
             rating: { type: Number, default: 0 },
             review: { type: String, default: "" },
             created: { type: Date }
-        },
-        sellerReview: {
-            rating: { type: Number, default: 0 },
-            review: { type: String, default: "" },
-            created: { type: Date }
         }
     },
     {
