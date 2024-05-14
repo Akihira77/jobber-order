@@ -82,12 +82,14 @@ export async function createOrder(
             ongoingJobs: 1,
             type: "create-order"
         };
-        const emailMessageDetails: IOrderMessage = {
+        const emailMessageDetails: IOrderMessage & { sellerEmail: string, buyerEmail: string } = {
             orderId: data.orderId,
             invoiceId: data.invoiceId,
             orderDue: `${data.offer.newDeliveryDate}`,
             amount: `${data.price}`,
             buyerUsername: lowerCase(data.buyerUsername),
+            buyerEmail: data.buyerEmail,
+            sellerEmail: data.sellerEmail,
             sellerUsername: lowerCase(data.sellerUsername),
             title: data.offer.gigTitle,
             description: data.offer.description,
@@ -95,7 +97,7 @@ export async function createOrder(
             serviceFee: `${orderData.serviceFee}`,
             total: `${orderData.price + orderData.serviceFee!}`,
             orderUrl: `${CLIENT_URL}/orders/${data.orderId}/activities`,
-            template: "orderPlaced"
+            template: "orderPlaced",
         };
         const { buyerService, notificationService } =
             exchangeNamesAndRoutingKeys;
@@ -204,67 +206,65 @@ export async function approveOrder(
     data: IOrderMessage
 ): Promise<IOrderDocument> {
     try {
-        {
-            const orderData = await OrderModel.findOneAndUpdate(
-                { orderId },
-                {
-                    $set: {
-                        approved: true,
-                        status: "Completed",
-                        approvedAt: new Date()
-                    }
-                },
-                { new: true }
-            ).exec();
+        const orderData = await OrderModel.findOneAndUpdate(
+            { orderId },
+            {
+                $set: {
+                    approved: true,
+                    status: "Completed",
+                    approvedAt: new Date()
+                }
+            },
+            { new: true }
+        ).exec();
 
-            if (!orderData) {
-                throw new NotFoundError(
-                    "Order is not found",
-                    "approveOrder() method"
-                );
-            }
-
-            const { buyerService } = exchangeNamesAndRoutingKeys;
-            const messageDetails: IOrderMessage = {
-                sellerId: data.sellerId,
-                buyerId: data.buyerId,
-                ongoingJobs: data.ongoingJobs,
-                completedJobs: data.completedJobs,
-                totalEarnings: data.totalEarnings, // this is the price the seller earned for lastest order delivered
-                recentDelivery: new Date()?.toString(),
-                type: "approve-order"
-            };
-
-            // update seller info
-            publishDirectMessage(
-                orderChannel,
-                buyerService.seller.exchangeName,
-                buyerService.seller.routingKey,
-                JSON.stringify(messageDetails),
-                "Approved order details sent to users service"
+        if (!orderData) {
+            throw new NotFoundError(
+                "Order is not found",
+                "approveOrder() method"
             );
-
-            // update buyer info
-            publishDirectMessage(
-                orderChannel,
-                buyerService.buyer.exchangeName,
-                buyerService.buyer.routingKey,
-                JSON.stringify({
-                    type: "purchased-gigs",
-                    buyerId: data.buyerId,
-                    purchasedGigs: data.purchasedGigs
-                }),
-                "Approved order details sent to notification service"
-            );
-
-            sendNotification(
-                orderData,
-                orderData.sellerUsername,
-                "approved your order delivery."
-            );
-
-            return orderData;
         }
+
+        const { buyerService } = exchangeNamesAndRoutingKeys;
+        const messageDetails: IOrderMessage = {
+            sellerId: data.sellerId,
+            buyerId: data.buyerId,
+            ongoingJobs: data.ongoingJobs,
+            completedJobs: data.completedJobs,
+            totalEarnings: data.totalEarnings, // this is the price the seller earned for lastest order delivered
+            recentDelivery: new Date()?.toString(),
+            type: "approve-order"
+        };
+
+        // update seller info
+        publishDirectMessage(
+            orderChannel,
+            buyerService.seller.exchangeName,
+            buyerService.seller.routingKey,
+            JSON.stringify(messageDetails),
+            "Approved order details sent to users service"
+        );
+
+        // update buyer info
+        publishDirectMessage(
+            orderChannel,
+            buyerService.buyer.exchangeName,
+            buyerService.buyer.routingKey,
+            JSON.stringify({
+                type: "purchased-gigs",
+                buyerId: data.buyerId,
+                purchasedGigs: data.purchasedGigs
+            }),
+            "Approved order details sent to notification service"
+        );
+
+        sendNotification(
+            orderData,
+            orderData.sellerUsername,
+            "approved your order delivery."
+        );
+
+        return orderData;
     } catch (error) {
         console.log(error);
         if (error instanceof CustomError) {
@@ -302,33 +302,32 @@ export async function deliverOrder(
             );
         }
 
-        if (orderData) {
-            const { notificationService } = exchangeNamesAndRoutingKeys;
-            const messageDetails: IOrderMessage = {
-                orderId,
-                buyerUsername: lowerCase(orderData.buyerUsername),
-                sellerUsername: lowerCase(orderData.sellerUsername),
-                title: orderData.offer.gigTitle,
-                description: orderData.offer.description,
-                orderUrl: `${CLIENT_URL}/orders/${orderId}/activities`,
-                template: "orderDelivered"
-            };
+        const { notificationService } = exchangeNamesAndRoutingKeys;
+        const messageDetails: IOrderMessage = {
+            orderId,
+            buyerUsername: lowerCase(orderData.buyerUsername),
+            sellerUsername: lowerCase(orderData.sellerUsername),
+            title: orderData.offer.gigTitle,
+            description: orderData.offer.description,
+            orderUrl: `${CLIENT_URL}/orders/${orderId}/activities`,
+            template: "orderDelivered",
+            receiverEmail: orderData.buyerEmail
+        };
 
-            // sent email
-            publishDirectMessage(
-                orderChannel,
-                notificationService.order.exchangeName,
-                notificationService.order.routingKey,
-                JSON.stringify(messageDetails),
-                "Order delivered message sent to notification service"
-            );
+        // sent email
+        publishDirectMessage(
+            orderChannel,
+            notificationService.order.exchangeName,
+            notificationService.order.routingKey,
+            JSON.stringify(messageDetails),
+            "Order delivered message sent to notification service"
+        );
 
-            sendNotification(
-                orderData,
-                orderData.buyerUsername,
-                "delivered your order."
-            );
-        }
+        sendNotification(
+            orderData,
+            orderData.buyerUsername,
+            "delivered your order."
+        );
 
         return orderData;
     } catch (error) {
@@ -375,7 +374,8 @@ export async function requestDeliveryExtension(
             newDate: orderData.offer.newDeliveryDate,
             reason: orderData.offer.reason,
             orderUrl: `${CLIENT_URL}/orders/${orderId}/activities`,
-            template: "orderExtension"
+            template: "orderExtension",
+            receiverEmail: orderData.buyerEmail
         };
 
         // sent email
@@ -447,7 +447,8 @@ export async function approveExtensionDeliveryDate(
             type: "accepted",
             message: "You can continue working on the order.",
             orderUrl: `${CLIENT_URL}/orders/${orderId}/activities`,
-            template: "orderExtensionApproval"
+            template: "orderExtensionApproval",
+            receiverEmail: orderData.sellerEmail
         };
 
         // sent email
@@ -511,7 +512,8 @@ export async function rejectExtensionDeliveryDate(
             type: "rejected",
             message: "You can contact the buyer for more information.",
             orderUrl: `${CLIENT_URL}/orders/${orderId}/activities`,
-            template: "orderExtensionApproval"
+            template: "orderExtensionApproval",
+            receiverEmail: orderData.sellerEmail
         };
 
         // sent email
@@ -557,33 +559,33 @@ export async function updateOrderReview(
                 $set:
                     data.type === "buyer-review"
                         ? {
-                              buyerReview: {
-                                  rating: data.rating,
-                                  review: data.review,
-                                  created: data.createdAt
-                                      ? new Date(data.createdAt)
-                                      : new Date()
-                              },
-                              events: {
-                                  buyerReview: data.createdAt
-                                      ? new Date(data.createdAt)
-                                      : new Date()
-                              }
-                          }
+                            buyerReview: {
+                                rating: data.rating,
+                                review: data.review,
+                                created: data.createdAt
+                                    ? new Date(data.createdAt)
+                                    : new Date()
+                            },
+                            events: {
+                                buyerReview: data.createdAt
+                                    ? new Date(data.createdAt)
+                                    : new Date()
+                            }
+                        }
                         : {
-                              sellerReview: {
-                                  rating: data.rating,
-                                  review: data.review,
-                                  created: data.createdAt
-                                      ? new Date(data.createdAt)
-                                      : new Date()
-                              },
-                              events: {
-                                  sellerReview: data.createdAt
-                                      ? new Date(data.createdAt)
-                                      : new Date()
-                              }
-                          }
+                            sellerReview: {
+                                rating: data.rating,
+                                review: data.review,
+                                created: data.createdAt
+                                    ? new Date(data.createdAt)
+                                    : new Date()
+                            },
+                            events: {
+                                sellerReview: data.createdAt
+                                    ? new Date(data.createdAt)
+                                    : new Date()
+                            }
+                        }
             },
             { new: true }
         ).exec();

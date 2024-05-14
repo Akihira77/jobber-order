@@ -16,7 +16,6 @@ export async function publishDirectMessage(
         await channel.assertExchange(exchangeName, "direct");
 
         channel.publish(exchangeName, routingKey, Buffer.from(message));
-
         console.log(logMessage);
     } catch (error) {
         console.log(
