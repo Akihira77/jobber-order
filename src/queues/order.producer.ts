@@ -1,5 +1,6 @@
 import { Channel } from "amqplib";
 import { createConnection } from "@order/queues/connection";
+import { logger } from "@order/config";
 
 export async function publishDirectMessage(
     channel: Channel,
@@ -16,9 +17,11 @@ export async function publishDirectMessage(
         await channel.assertExchange(exchangeName, "direct");
 
         channel.publish(exchangeName, routingKey, Buffer.from(message));
-        console.log(logMessage);
+        logger("queues/order.producer.ts - publishDireectMessage()").info(
+            logMessage
+        );
     } catch (error) {
-        console.log(
+        logger("queues/order.producer.ts - publishDireectMessage()").error(
             "OrderService QueueProducer publishDirectMessage() method error:",
             error
         );

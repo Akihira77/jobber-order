@@ -5,7 +5,11 @@ import { updateOrderReview } from "@order/services/order.service";
 import { Logger } from "winston";
 import { winstonLogger } from "@Akihira77/jobber-shared";
 
-const logger: Logger = winstonLogger(`${ELASTIC_SEARCH_URL}`, "OrderServiceConsumer", "debug");
+const logger: Logger = winstonLogger(
+    `${ELASTIC_SEARCH_URL}`,
+    "OrderServiceConsumer",
+    "debug"
+);
 
 export async function consumeReviewFanoutMessage(
     channel: Channel
@@ -40,7 +44,9 @@ export async function consumeReviewFanoutMessage(
                 try {
                     const { type } = JSON.parse(msg!.content.toString());
                     if (type === "addReview") {
-                        const { gigReview } = JSON.parse(msg!.content.toString());
+                        const { gigReview } = JSON.parse(
+                            msg!.content.toString()
+                        );
                         await updateOrderReview(gigReview);
 
                         channel.ack(msg!);

@@ -8,6 +8,6 @@ const initialize = () => {
     databaseConnection();
     const app: Express = express();
     start(app);
-}
+};
 
 initialize();

@@ -20,7 +20,7 @@ describe("Order Controller - Read/Get method", () => {
 
         expect(body).toEqual({
             comingFrom: "getOrderByOrderId() method",
-            message: `Order is not found`,
+            message: "Order is not found",
             status: "error",
             statusCode: 404
         });

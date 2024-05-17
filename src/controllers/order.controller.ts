@@ -1,4 +1,11 @@
-import { BadRequestError, IOrderDocument, uploads, IDeliveredWork } from "@Akihira77/jobber-shared";
+import crypto from "crypto";
+
+import {
+    BadRequestError,
+    IOrderDocument,
+    uploads,
+    IDeliveredWork
+} from "@Akihira77/jobber-shared";
 import { STRIPE_API_PRIVATE_KEY } from "@order/config";
 import { orderSchema, orderUpdateSchema } from "@order/schemas/order.schema";
 import * as notificationService from "@order/services/notification.service";
@@ -6,7 +13,6 @@ import * as orderService from "@order/services/order.service";
 import { Request, Response } from "express";
 import { StatusCodes } from "http-status-codes";
 import Stripe from "stripe";
-import crypto from "crypto";
 
 const stripe = new Stripe(STRIPE_API_PRIVATE_KEY!, {
     typescript: true
@@ -30,7 +36,9 @@ export async function updateNotificationReadStatus(
     req: Request,
     res: Response
 ): Promise<void> {
-    const notification = await notificationService.markNotificationAsRead(req.body.notificationId);
+    const notification = await notificationService.markNotificationAsRead(
+        req.body.notificationId
+    );
 
     res.status(StatusCodes.OK).json({
         message: "Notification read status updated successfully.",
@@ -38,7 +46,10 @@ export async function updateNotificationReadStatus(
     });
 }
 
-export async function createOrderIntent(req: Request, res: Response): Promise<void> {
+export async function createOrderIntent(
+    req: Request,
+    res: Response
+): Promise<void> {
     const customer: Stripe.Response<Stripe.ApiSearchResult<Stripe.Customer>> =
         await stripe.customers.search({
             query: `email:"${req.currentUser!.email}"`
@@ -83,7 +94,7 @@ export async function createOrderIntent(req: Request, res: Response): Promise<vo
     }
 
     res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
-        message: "Unexpected error occured. Please try again",
+        message: "Unexpected error occured. Please try again"
     });
 }
 
@@ -103,8 +114,10 @@ export async function createOrder(req: Request, res: Response): Promise<void> {
         req.body.price < 50
             ? (5.5 / 100) * req.body.price + 2
             : (5.5 / 100) * req.body.price;
-    let orderData: IOrderDocument = req.body;
-    orderData.serviceFee = serviceFee;
+    const orderData: IOrderDocument = {
+        ...req.body,
+        serviceFee: serviceFee
+    };
     const order: IOrderDocument = await orderService.createOrder(orderData);
 
     res.status(StatusCodes.CREATED).json({
@@ -113,19 +126,28 @@ export async function createOrder(req: Request, res: Response): Promise<void> {
     });
 }
 
-export async function getOrderbyOrderId(req: Request, res: Response): Promise<void> {
+export async function getOrderbyOrderId(
+    req: Request,
+    res: Response
+): Promise<void> {
     const order = await orderService.getOrderByOrderId(req.params.orderId);
 
     res.status(StatusCodes.OK).json({ message: "Order by orderId", order });
 }
 
-export async function getOrdersbySellerId(req: Request, res: Response): Promise<void> {
+export async function getOrdersbySellerId(
+    req: Request,
+    res: Response
+): Promise<void> {
     const orders = await orderService.getOrdersBySellerId(req.params.sellerId);
 
     res.status(StatusCodes.OK).json({ message: "Seller orders", orders });
 }
 
-export async function getOrdersbyBuyerId(req: Request, res: Response): Promise<void> {
+export async function getOrdersbyBuyerId(
+    req: Request,
+    res: Response
+): Promise<void> {
     const orders = await orderService.getOrdersByBuyerId(req.params.buyerId);
 
     res.status(StatusCodes.OK).json({ message: "Buyer orders", orders });
@@ -171,7 +193,10 @@ export async function sellerRequestExtension(
     });
 }
 
-export async function updateDeliveryDate(req: Request, res: Response): Promise<void> {
+export async function updateDeliveryDate(
+    req: Request,
+    res: Response
+): Promise<void> {
     const { error } = orderUpdateSchema.validate(req.body);
 
     if (error?.details) {
@@ -200,7 +225,10 @@ export async function buyerApproveOrder(
 ): Promise<void> {
     const { orderId } = req.params;
 
-    const order: IOrderDocument = await orderService.approveOrder(orderId, req.body);
+    const order: IOrderDocument = await orderService.approveOrder(
+        orderId,
+        req.body
+    );
 
     res.status(StatusCodes.OK).json({
         message: "Order approve successfully.",

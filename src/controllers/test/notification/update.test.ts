@@ -32,7 +32,7 @@ describe("Notification Controller - Update method", () => {
 
         expect(body).toEqual({
             comingFrom: "markNotificationAsRead() method",
-            message: `OrderNotification is not found`,
+            message: "OrderNotification is not found",
             status: "error",
             statusCode: 404
         });

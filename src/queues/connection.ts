@@ -1,4 +1,4 @@
-import { RABBITMQ_ENDPOINT } from "@order/config";
+import { logger, RABBITMQ_ENDPOINT } from "@order/config";
 import client, { Connection, Channel } from "amqplib";
 
 export async function createConnection(): Promise<Channel> {
@@ -7,13 +7,19 @@ export async function createConnection(): Promise<Channel> {
             `${RABBITMQ_ENDPOINT}`
         );
         const channel: Channel = await connection.createChannel();
-        console.log("Order server connected to queue successfully...");
+        // console.log("Order server connected to queue successfully...");
+        logger("queues/connection.ts - createConnection()").info(
+            "OrderService connected to RabbitMQ successfully..."
+        );
         closeConnection(channel, connection);
 
         return channel;
     } catch (error) {
-        console.log("OrderService createConnection() method error:", error);
-        process.exit(1)
+        logger("queues/connection.ts - createConnection()").error(
+            "OrderService createConnection() method error:",
+            error
+        );
+        process.exit(1);
     }
 }
 

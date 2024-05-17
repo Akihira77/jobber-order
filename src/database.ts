@@ -1,12 +1,16 @@
-import { DATABASE_URL } from "@order/config";
+import { DATABASE_URL, logger } from "@order/config";
 import mongoose from "mongoose";
 
 export const databaseConnection = async (): Promise<void> => {
     try {
-        // console.log(DATABASE_URL);
         await mongoose.connect(DATABASE_URL!);
-        console.log("Order service successfully connected to database.");
+        logger("database.ts - databaseConnection()").info(
+            "OrderService MongoDB is connected."
+        );
     } catch (error) {
-        console.log("OrderService databaseConnection() method error:", error);
+        logger("database.ts - databaseConnection()").error(
+            "OrderService databaseConnection() method error:",
+            error
+        );
     }
 };

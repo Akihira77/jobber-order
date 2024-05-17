@@ -48,10 +48,12 @@ const data: IOrderDocument = {
     buyerImage:
         "https://res.cloudinary.com/duthytmqy/image/upload/v1710981856/35548e40-0646-462c-b92f-6e457f947d58.jpg",
     status: "in progress",
-    orderId: `JO${Math.floor(Math.random() * (9 * Math.pow(10, 10))) + Math.pow(10, 10)
-        }`,
-    invoiceId: `JI${Math.floor(Math.random() * (9 * Math.pow(10, 10))) + Math.pow(10, 10)
-        }`,
+    orderId: `JO${
+        Math.floor(Math.random() * (9 * Math.pow(10, 10))) + Math.pow(10, 10)
+    }`,
+    invoiceId: `JI${
+        Math.floor(Math.random() * (9 * Math.pow(10, 10))) + Math.pow(10, 10)
+    }`,
     quantity: 2,
     price: 20,
     serviceFee: 2.5,

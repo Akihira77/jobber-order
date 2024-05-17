@@ -10,7 +10,7 @@
     "build": "tsc --project tsconfig.json && tsc-alias -p tsconfig.json",
     "test": "jest --coverage=true -w=1 --forceExit --detectOpenHandles --watchAll=false --silent",
     "lint:check": "eslint ./src/**/*.ts",
-    "lint:fix": "eslint ./src/**/*.ts -- fix",
+    "lint:fix": "eslint ./src/**/*.ts --fix",
     "prettier:check": "prettier --check ./src/**/*.{ts,json}",
     "prettier:fix": "prettier --write ./src/**/*.{ts,json}"
   },
@@ -18,7 +18,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@Akihira77/jobber-shared": "^0.0.14",
+    "@Akihira77/jobber-shared": "^0.0.16",
     "@elastic/elasticsearch": "^8.11.0",
     "amqplib": "^0.10.3",
     "bcryptjs": "^2.4.3",

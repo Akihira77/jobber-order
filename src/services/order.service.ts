@@ -9,11 +9,10 @@ import {
     lowerCase,
     NotFoundError
 } from "@Akihira77/jobber-shared";
-import { exchangeNamesAndRoutingKeys } from "@order/config";
+import { exchangeNamesAndRoutingKeys, CLIENT_URL } from "@order/config";
 import { OrderModel } from "@order/models/order.model";
 import { publishDirectMessage } from "@order/queues/order.producer";
 import { orderChannel } from "@order/server";
-import { CLIENT_URL } from "@order/config";
 import { sendNotification } from "@order/services/notification.service";
 import { orderSchema } from "@order/schemas/order.schema";
 
@@ -24,7 +23,10 @@ export async function getOrderByOrderId(
         const order = await OrderModel.findOne({ orderId }).lean().exec();
 
         if (!order) {
-            throw new NotFoundError("Order is not found", "getOrderByOrderId() method");
+            throw new NotFoundError(
+                "Order is not found",
+                "getOrderByOrderId() method"
+            );
         }
 
         return order;
@@ -82,7 +84,10 @@ export async function createOrder(
             ongoingJobs: 1,
             type: "create-order"
         };
-        const emailMessageDetails: IOrderMessage & { sellerEmail: string, buyerEmail: string } = {
+        const emailMessageDetails: IOrderMessage & {
+            sellerEmail: string;
+            buyerEmail: string;
+        } = {
             orderId: data.orderId,
             invoiceId: data.invoiceId,
             orderDue: `${data.offer.newDeliveryDate}`,
@@ -97,7 +102,7 @@ export async function createOrder(
             serviceFee: `${orderData.serviceFee}`,
             total: `${orderData.price + orderData.serviceFee!}`,
             orderUrl: `${CLIENT_URL}/orders/${data.orderId}/activities`,
-            template: "orderPlaced",
+            template: "orderPlaced"
         };
         const { buyerService, notificationService } =
             exchangeNamesAndRoutingKeys;
@@ -559,33 +564,33 @@ export async function updateOrderReview(
                 $set:
                     data.type === "buyer-review"
                         ? {
-                            buyerReview: {
-                                rating: data.rating,
-                                review: data.review,
-                                created: data.createdAt
-                                    ? new Date(data.createdAt)
-                                    : new Date()
-                            },
-                            events: {
-                                buyerReview: data.createdAt
-                                    ? new Date(data.createdAt)
-                                    : new Date()
-                            }
-                        }
+                              buyerReview: {
+                                  rating: data.rating,
+                                  review: data.review,
+                                  created: data.createdAt
+                                      ? new Date(data.createdAt)
+                                      : new Date()
+                              },
+                              events: {
+                                  buyerReview: data.createdAt
+                                      ? new Date(data.createdAt)
+                                      : new Date()
+                              }
+                          }
                         : {
-                            sellerReview: {
-                                rating: data.rating,
-                                review: data.review,
-                                created: data.createdAt
-                                    ? new Date(data.createdAt)
-                                    : new Date()
-                            },
-                            events: {
-                                sellerReview: data.createdAt
-                                    ? new Date(data.createdAt)
-                                    : new Date()
-                            }
-                        }
+                              sellerReview: {
+                                  rating: data.rating,
+                                  review: data.review,
+                                  created: data.createdAt
+                                      ? new Date(data.createdAt)
+                                      : new Date()
+                              },
+                              events: {
+                                  sellerReview: data.createdAt
+                                      ? new Date(data.createdAt)
+                                      : new Date()
+                              }
+                          }
             },
             { new: true }
         ).exec();
