@@ -1,27 +1,25 @@
-import { winstonLogger } from "@Akihira77/jobber-shared";
-import { ELASTIC_SEARCH_URL, RABBITMQ_ENDPOINT } from "@order/config";
+import { logger, RABBITMQ_ENDPOINT } from "@order/config";
 import client, { Connection, Channel } from "amqplib";
-import { Logger } from "winston";
 
-const log: Logger = winstonLogger(
-    `${ELASTIC_SEARCH_URL}`,
-    "orderQueueConnection",
-    "debug"
-);
-
-export async function createConnection(): Promise<Channel | undefined> {
+export async function createConnection(): Promise<Channel> {
     try {
         const connection: Connection = await client.connect(
             `${RABBITMQ_ENDPOINT}`
         );
         const channel: Channel = await connection.createChannel();
-        log.info("Order server connected to queue successfully...");
+        // console.log("Order server connected to queue successfully...");
+        logger("queues/connection.ts - createConnection()").info(
+            "OrderService connected to RabbitMQ successfully..."
+        );
         closeConnection(channel, connection);
 
         return channel;
     } catch (error) {
-        log.error("OrderService createConnection() method error:", error);
-        return undefined;
+        logger("queues/connection.ts - createConnection()").error(
+            "OrderService createConnection() method error:",
+            error
+        );
+        process.exit(1);
     }
 }
 

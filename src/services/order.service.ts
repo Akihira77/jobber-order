@@ -1,32 +1,24 @@
 import {
     BadRequestError,
+    CustomError,
     IDeliveredWork,
     IExtendedDelivery,
     IOrderDocument,
     IOrderMessage,
     IReviewMessageDetails,
     lowerCase,
-    NotFoundError,
-    winstonLogger
+    NotFoundError
 } from "@Akihira77/jobber-shared";
-import { ELASTIC_SEARCH_URL, exchangeNamesAndRoutingKeys } from "@order/config";
+import { exchangeNamesAndRoutingKeys, CLIENT_URL } from "@order/config";
 import { OrderModel } from "@order/models/order.model";
 import { publishDirectMessage } from "@order/queues/order.producer";
 import { orderChannel } from "@order/server";
-import { CLIENT_URL } from "@order/config";
 import { sendNotification } from "@order/services/notification.service";
-import { Logger } from "winston";
 import { orderSchema } from "@order/schemas/order.schema";
-
-const logger: Logger = winstonLogger(
-    `${ELASTIC_SEARCH_URL}`,
-    "orderService",
-    "debug"
-);
 
 export async function getOrderByOrderId(
     orderId: string
-): Promise<IOrderDocument | null> {
+): Promise<IOrderDocument> {
     try {
         const order = await OrderModel.findOne({ orderId }).lean().exec();
 
@@ -39,11 +31,8 @@ export async function getOrderByOrderId(
 
         return order;
     } catch (error) {
-        if (error) {
-            logger.error(
-                "OrderService getOrderByOrderId() method error:",
-                error
-            );
+        console.log(error);
+        if (error instanceof CustomError) {
             throw error;
         }
         throw new Error("Unexpected error occured. Please try again.");
@@ -58,7 +47,7 @@ export async function getOrdersBySellerId(
 
         return order;
     } catch (error) {
-        logger.error("OrderService getOrdersBySellerId() method error:", error);
+        console.log(error);
         throw new Error("Unexpected error occured. Please try again.");
     }
 }
@@ -71,7 +60,7 @@ export async function getOrdersByBuyerId(
 
         return order;
     } catch (error) {
-        logger.error("OrderService getOrdersByBuyerId() method error:", error);
+        console.log(error);
         throw new Error("Unexpected error occured. Please try again.");
     }
 }
@@ -96,8 +85,8 @@ export async function createOrder(
             type: "create-order"
         };
         const emailMessageDetails: IOrderMessage & {
-            buyerEmail: string;
             sellerEmail: string;
+            buyerEmail: string;
         } = {
             orderId: data.orderId,
             invoiceId: data.invoiceId,
@@ -105,8 +94,8 @@ export async function createOrder(
             amount: `${data.price}`,
             buyerUsername: lowerCase(data.buyerUsername),
             buyerEmail: data.buyerEmail,
-            sellerUsername: lowerCase(data.sellerUsername),
             sellerEmail: data.sellerEmail,
+            sellerUsername: lowerCase(data.sellerUsername),
             title: data.offer.gigTitle,
             description: data.offer.description,
             requirements: data.requirements,
@@ -118,7 +107,7 @@ export async function createOrder(
         const { usersService, notificationService } =
             exchangeNamesAndRoutingKeys;
 
-        await publishDirectMessage(
+        publishDirectMessage(
             orderChannel,
             usersService.seller.exchangeName,
             usersService.seller.routingKey,
@@ -142,10 +131,10 @@ export async function createOrder(
 
         return orderData;
     } catch (error) {
-        if (error) {
-            logger.error("OrderService createOrder() method error:", error);
+        if (error instanceof CustomError) {
             throw error;
         }
+
         throw new Error("Unexpected error occured. Please try again.");
     }
 }
@@ -165,7 +154,7 @@ export async function cancelOrder(
                 }
             },
             { new: true }
-        ).lean().exec();
+        ).exec();
 
         if (!orderData) {
             throw new NotFoundError(
@@ -177,7 +166,7 @@ export async function cancelOrder(
         const { usersService } = exchangeNamesAndRoutingKeys;
 
         // update seller info
-        await publishDirectMessage(
+        publishDirectMessage(
             orderChannel,
             usersService.seller.exchangeName,
             usersService.seller.routingKey,
@@ -185,11 +174,11 @@ export async function cancelOrder(
                 sellerId: data.sellerId,
                 type: "cancel-order"
             }),
-            "Cancelled order details sent to users service (Seller)"
+            "Cancelled order details sent to users service"
         );
 
         // update buyer info
-        await publishDirectMessage(
+        publishDirectMessage(
             orderChannel,
             usersService.buyer.exchangeName,
             usersService.buyer.routingKey,
@@ -198,7 +187,7 @@ export async function cancelOrder(
                 buyerId: data.buyerId,
                 purchasedGigs: data.purchasedGigs
             }),
-            "Cancelled order details sent to users service (Buyer)"
+            "Cancelled order deatils sent to notification service"
         );
 
         sendNotification(
@@ -209,8 +198,8 @@ export async function cancelOrder(
 
         return orderData;
     } catch (error) {
-        if (error) {
-            logger.error("OrderService cancelOrder() method error:", error);
+        if (error instanceof CustomError) {
+            console.log(error);
             throw error;
         }
         throw new Error("Unexpected error occured. Please try again.");
@@ -232,7 +221,7 @@ export async function approveOrder(
                 }
             },
             { new: true }
-        ).lean().exec();
+        ).exec();
 
         if (!orderData) {
             throw new NotFoundError(
@@ -253,16 +242,16 @@ export async function approveOrder(
         };
 
         // update seller info
-        await publishDirectMessage(
+        publishDirectMessage(
             orderChannel,
             usersService.seller.exchangeName,
             usersService.seller.routingKey,
             JSON.stringify(messageDetails),
-            "Approved order details sent to users service (seller)"
+            "Approved order details sent to users service"
         );
 
         // update buyer info
-        await publishDirectMessage(
+        publishDirectMessage(
             orderChannel,
             usersService.buyer.exchangeName,
             usersService.buyer.routingKey,
@@ -271,7 +260,7 @@ export async function approveOrder(
                 buyerId: data.buyerId,
                 purchasedGigs: data.purchasedGigs
             }),
-            "Approved order details sent to users service (buyer)"
+            "Approved order details sent to notification service"
         );
 
         sendNotification(
@@ -282,8 +271,8 @@ export async function approveOrder(
 
         return orderData;
     } catch (error) {
-        if (error) {
-            logger.error("OrderService approveOrder() method error:", error);
+        console.log(error);
+        if (error instanceof CustomError) {
             throw error;
         }
         throw new Error("Unexpected error occured. Please try again.");
@@ -309,7 +298,7 @@ export async function deliverOrder(
                 }
             },
             { new: true }
-        ).lean().exec();
+        ).exec();
 
         if (!orderData) {
             throw new NotFoundError(
@@ -327,7 +316,7 @@ export async function deliverOrder(
             title: orderData.offer.gigTitle,
             description: orderData.offer.description,
             orderUrl: `${CLIENT_URL}/orders/${orderId}/activities`,
-            template: "orderDelivered"
+            template: "orderDelivered",
         };
 
         // sent email
@@ -347,8 +336,8 @@ export async function deliverOrder(
 
         return orderData;
     } catch (error) {
-        if (error) {
-            logger.error("OrderService deliverOrder() method error:", error);
+        console.log(error);
+        if (error instanceof CustomError) {
             throw error;
         }
 
@@ -373,7 +362,7 @@ export async function requestDeliveryExtension(
                 }
             },
             { new: true }
-        ).lean().exec();
+        ).exec();
 
         if (!orderData) {
             throw new NotFoundError(
@@ -391,7 +380,7 @@ export async function requestDeliveryExtension(
             newDate: orderData.offer.newDeliveryDate,
             reason: orderData.offer.reason,
             orderUrl: `${CLIENT_URL}/orders/${orderId}/activities`,
-            template: "orderExtension"
+            template: "orderExtension",
         };
 
         // sent email
@@ -411,11 +400,8 @@ export async function requestDeliveryExtension(
 
         return orderData;
     } catch (error) {
-        if (error) {
-            logger.error(
-                "OrderService requestDeliveryExtension() method error:",
-                error
-            );
+        console.log(error);
+        if (error instanceof CustomError) {
             throw error;
         }
 
@@ -448,7 +434,7 @@ export async function approveExtensionDeliveryDate(
                 }
             },
             { new: true }
-        ).lean().exec();
+        ).exec();
 
         if (!orderData) {
             throw new NotFoundError(
@@ -467,7 +453,7 @@ export async function approveExtensionDeliveryDate(
             type: "accepted",
             message: "You can continue working on the order.",
             orderUrl: `${CLIENT_URL}/orders/${orderId}/activities`,
-            template: "orderExtensionApproval"
+            template: "orderExtensionApproval",
         };
 
         // sent email
@@ -487,11 +473,8 @@ export async function approveExtensionDeliveryDate(
 
         return orderData;
     } catch (error) {
-        if (error) {
-            logger.error(
-                "OrderService approveExtensionDeliveryDate() method error:",
-                error
-            );
+        console.log(error);
+        if (error instanceof CustomError) {
             throw error;
         }
 
@@ -516,7 +499,7 @@ export async function rejectExtensionDeliveryDate(
                 }
             },
             { new: true }
-        ).lean().exec();
+        ).exec();
 
         if (!orderData) {
             throw new NotFoundError(
@@ -535,7 +518,7 @@ export async function rejectExtensionDeliveryDate(
             type: "rejected",
             message: "You can contact the buyer for more information.",
             orderUrl: `${CLIENT_URL}/orders/${orderId}/activities`,
-            template: "orderExtensionApproval"
+            template: "orderExtensionApproval",
         };
 
         // sent email
@@ -555,11 +538,8 @@ export async function rejectExtensionDeliveryDate(
 
         return orderData;
     } catch (error) {
-        if (error) {
-            logger.error(
-                "OrderService rejectExtensionDeliveryDate() method error:",
-                error
-            );
+        console.log(error);
+        if (error instanceof CustomError) {
             throw error;
         }
 
@@ -578,51 +558,42 @@ export async function updateOrderReview(
             );
         }
 
-        const order = await getOrderByOrderId(data.orderId!)
-
         const orderData = await OrderModel.findOneAndUpdate(
             { orderId: data.orderId },
             {
                 $set:
                     data.type === "buyer-review"
                         ? {
-                            buyerReview: {
-                                rating: data.rating,
-                                review: data.review,
-                                created: data.createdAt
-                                    ? new Date(data.createdAt)
-                                    : new Date()
-                            },
-                            events: {
-                                placeOrder: order?.events.placeOrder,
-                                requirements: order?.events.requirements,
-                                orderStarted: order?.events.orderStarted,
-                                orderDelivered: order?.events.orderDelivered,
-                                buyerReview: data.createdAt ? new Date(data.createdAt) : new Date(),
-                                deliveryDateUpdate: order?.events.deliveryDateUpdate
-                            }
-                        }
+                              buyerReview: {
+                                  rating: data.rating,
+                                  review: data.review,
+                                  created: data.createdAt
+                                      ? new Date(data.createdAt)
+                                      : new Date()
+                              },
+                              events: {
+                                  buyerReview: data.createdAt
+                                      ? new Date(data.createdAt)
+                                      : new Date()
+                              }
+                          }
                         : {
-                            sellerReview: {
-                                rating: data.rating,
-                                review: data.review,
-                                created: data.createdAt
-                                    ? new Date(data.createdAt)
-                                    : new Date()
-                            },
-                            events: {
-                                placeOrder: order?.events.placeOrder,
-                                requirements: order?.events.requirements,
-                                orderStarted: order?.events.orderStarted,
-                                orderDelivered: order?.events.orderDelivered,
-                                sellerReview: data.createdAt ? new Date(data.createdAt) : new Date(),
-                                deliveryDateUpdate: order?.events.deliveryDateUpdate
-                            }
-
-                        }
+                              sellerReview: {
+                                  rating: data.rating,
+                                  review: data.review,
+                                  created: data.createdAt
+                                      ? new Date(data.createdAt)
+                                      : new Date()
+                              },
+                              events: {
+                                  sellerReview: data.createdAt
+                                      ? new Date(data.createdAt)
+                                      : new Date()
+                              }
+                          }
             },
-            { new: true, upsert: true }
-        ).lean().exec();
+            { new: true }
+        ).exec();
 
         if (!orderData) {
             throw new NotFoundError(
@@ -641,14 +612,30 @@ export async function updateOrderReview(
 
         return orderData;
     } catch (error) {
-        if (error) {
-            logger.error(
-                "OrderService updateOrderReview() method error:",
-                error
-            );
+        console.log(error);
+        if (error instanceof CustomError) {
             throw error;
         }
 
         throw new Error("Unexpected error occured. Please try again");
+    }
+}
+
+export async function deleteOrder(
+    gigId?: string,
+    sellerId?: string,
+    orderId?: string
+): Promise<boolean> {
+    try {
+        const result = await OrderModel.deleteOne({
+            gigId,
+            sellerId,
+            orderId
+        }).exec();
+
+        return result.deletedCount > 0;
+    } catch (error) {
+        console.log(error);
+        throw new Error("Unexpected error occured. Please try again.");
     }
 }

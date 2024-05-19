@@ -1,21 +1,14 @@
 import {
+    CustomError,
     IOrderDocument,
     IOrderNotifcation,
-    NotFoundError,
-    winstonLogger
+    NotFoundError
 } from "@Akihira77/jobber-shared";
-import { ELASTIC_SEARCH_URL } from "@order/config";
+import { logger } from "@order/config";
 import { OrderNotificationModel } from "@order/models/notification.model";
 import { socketIOOrderObject } from "@order/server";
 import { getOrderByOrderId } from "@order/services/order.service";
 import { isValidObjectId } from "mongoose";
-import { Logger } from "winston";
-
-const logger: Logger = winstonLogger(
-    `${ELASTIC_SEARCH_URL}`,
-    "orderService",
-    "debug"
-);
 
 export async function createNotification(
     request: IOrderNotifcation
@@ -25,7 +18,7 @@ export async function createNotification(
 
         return notification;
     } catch (error) {
-        logger.error("OrderService createNotification() method error:", error);
+        console.log(error);
         throw new Error("Unexpected error occured. Please try again.");
     }
 }
@@ -41,7 +34,7 @@ export async function getNotificationByUserToId(
 
         return notification;
     } catch (error) {
-        logger.error(
+        logger("services/notification.service.ts - getNotificationByUserToId()").error(
             "OrderService getNotificationByUserToId() method error:",
             error
         );
@@ -69,7 +62,7 @@ export async function markNotificationAsRead(
             {
                 new: true
             }
-        ).lean().exec();
+        ).exec();
 
         if (!notification) {
             throw new NotFoundError(
@@ -85,11 +78,8 @@ export async function markNotificationAsRead(
         socketIOOrderObject.emit("order_notification", order);
         return notification;
     } catch (error) {
-        if (error) {
-            logger.error(
-                "OrderService markNotificationAsRead() method error:",
-                error
-            );
+        console.log(error);
+        if (error instanceof CustomError) {
             throw error;
         }
 
@@ -122,7 +112,26 @@ export async function sendNotification(
             orderNotification
         );
     } catch (error) {
-        logger.error("OrderService sendNotification() method error:", error);
+        console.log(error);
+        throw new Error("Unexpected error occured. Please try again.");
+    }
+}
+
+export async function deleteOrderNotifications(
+    userTo: string,
+    senderUsername: string,
+    orderId: string
+): Promise<boolean> {
+    try {
+        const result = await OrderNotificationModel.deleteMany({
+            userTo,
+            senderUsername,
+            orderId
+        }).exec();
+
+        return result.deletedCount > 0;
+    } catch (error) {
+        console.log(error);
         throw new Error("Unexpected error occured. Please try again.");
     }
 }

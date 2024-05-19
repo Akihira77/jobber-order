@@ -1,90 +1,79 @@
-import j, { ObjectSchema } from "joi";
+import Joi, { ObjectSchema } from "joi";
 
-const orderSchema: ObjectSchema = j.object().keys({
-    offer: j
-        .object({
-            gigTitle: j.string().required(),
-            price: j.number().required(),
-            description: j.string().required(),
-            deliveryInDays: j.number().required(),
-            oldDeliveryDate: j.string().required(),
-            newDeliveryDate: j.string().optional(),
-            accepted: j.boolean().required(),
-            cancelled: j.boolean().required()
-        })
-        .required(),
-    gigId: j.string().required(),
-    sellerId: j.string().required(),
-    sellerUsername: j.string().required(),
-    sellerEmail: j.string().required(),
-    sellerImage: j.string().required(),
-    gigCoverImage: j.string().required(),
-    gigMainTitle: j.string().required(),
-    gigBasicTitle: j.string().required(),
-    gigBasicDescription: j.string().required(),
-    buyerId: j.string().required(),
-    buyerUsername: j.string().required(),
-    buyerEmail: j.string().required(),
-    buyerImage: j.string().required(),
-    status: j.string().required(),
-    orderId: j.string().required(),
-    invoiceId: j.string().required(),
-    quantity: j.number().required(),
-    price: j.number().required(),
-    serviceFee: j.number().optional(),
-    requirements: j.string().optional().allow(null, ""),
-    paymentIntent: j.string().required(),
-    requestExtension: j
-        .object({
-            originalDate: j.string().required(),
-            newDate: j.string().required(),
-            days: j.number().required(),
-            reason: j.string().required()
-        })
-        .optional(),
-    delivered: j.boolean().optional(),
-    approvedAt: j.string().optional(),
-    deliveredWork: j
-        .array()
+const orderSchema: ObjectSchema = Joi.object().keys({
+    offer: Joi.object({
+        gigTitle: Joi.string().required(),
+        price: Joi.number().required(),
+        description: Joi.string().required(),
+        deliveryInDays: Joi.number().required(),
+        oldDeliveryDate: Joi.string().required(),
+        newDeliveryDate: Joi.string().optional(),
+        accepted: Joi.boolean().required(),
+        cancelled: Joi.boolean().required()
+    }).required(),
+    gigId: Joi.string().required(),
+    sellerId: Joi.string().required(),
+    sellerUsername: Joi.string().required(),
+    sellerEmail: Joi.string().required(),
+    sellerImage: Joi.string().required(),
+    gigCoverImage: Joi.string().required(),
+    gigMainTitle: Joi.string().required(),
+    gigBasicTitle: Joi.string().required(),
+    gigBasicDescription: Joi.string().required(),
+    buyerId: Joi.string().required(),
+    buyerUsername: Joi.string().required(),
+    buyerEmail: Joi.string().required(),
+    buyerImage: Joi.string().required(),
+    status: Joi.string().required(),
+    orderId: Joi.string().required(),
+    invoiceId: Joi.string().required(),
+    quantity: Joi.number().required(),
+    price: Joi.number().required(),
+    serviceFee: Joi.number().optional(),
+    requirements: Joi.string().optional().allow(null, ""),
+    paymentIntent: Joi.string().required(),
+    requestExtension: Joi.object({
+        originalDate: Joi.string().required(),
+        newDate: Joi.string().required(),
+        days: Joi.number().required(),
+        reason: Joi.string().required()
+    }).optional(),
+    delivered: Joi.boolean().optional(),
+    approvedAt: Joi.string().optional(),
+    deliveredWork: Joi.array()
         .items(
-            j.object({
-                message: j.string(),
-                file: j.string()
+            Joi.object({
+                message: Joi.string(),
+                file: Joi.string()
             })
         )
         .optional(),
-    dateOrdered: j.string().optional(),
-    events: j
-        .object({
-            placeOrder: j.string(),
-            requirements: j.string(),
-            orderStarted: j.string(),
-            deliverydateUpdate: j.string().optional(),
-            orderDelivered: j.string().optional(),
-            buyerReview: j.string().optional(),
-            sellerReview: j.string().optional()
-        })
-        .optional(),
-    buyerReview: j
-        .object({
-            rating: j.number(),
-            review: j.string()
-        })
-        .optional(),
-    sellerReview: j
-        .object({
-            rating: j.number(),
-            review: j.string()
-        })
-        .optional()
+    dateOrdered: Joi.string().optional(),
+    events: Joi.object({
+        placeOrder: Joi.string(),
+        requirements: Joi.string(),
+        orderStarted: Joi.string(),
+        deliverydateUpdate: Joi.string().optional(),
+        orderDelivered: Joi.string().optional(),
+        buyerReview: Joi.string().optional(),
+        sellerReview: Joi.string().optional()
+    }).optional(),
+    buyerReview: Joi.object({
+        rating: Joi.number(),
+        review: Joi.string()
+    }).optional(),
+    sellerReview: Joi.object({
+        rating: Joi.number(),
+        review: Joi.string()
+    }).optional()
 });
 
-const orderUpdateSchema: ObjectSchema = j.object().keys({
-    originalDate: j.string().required(),
-    newDate: j.string().required(),
-    days: j.number().required(),
-    reason: j.string().required(),
-    deliveryDateUpdate: j.string().optional()
+const orderUpdateSchema: ObjectSchema = Joi.object().keys({
+    originalDate: Joi.string().required(),
+    newDate: Joi.string().required(),
+    days: Joi.number().required(),
+    reason: Joi.string().required(),
+    deliveryDateUpdate: Joi.string().optional()
 });
 
 export { orderSchema, orderUpdateSchema };

@@ -3,7 +3,7 @@ import { cloudinaryConfig } from "@order/config";
 import express, { Express } from "express";
 import { start } from "@order/server";
 
-const initialize = (): void => {
+const initialize = () => {
     cloudinaryConfig();
     databaseConnection();
     const app: Express = express();

@@ -1,7 +1,7 @@
 import { IOrderNotifcation } from "@Akihira77/jobber-shared";
 import { model, Model, Schema } from "mongoose";
 
-const notificationSchema: Schema = new Schema({
+const orderNotificationSchema: Schema = new Schema({
     userTo: { type: String, default: "", index: true },
     senderUsername: { type: String, default: "" },
     senderPicture: { type: String, default: "" },
@@ -16,7 +16,7 @@ const notificationSchema: Schema = new Schema({
 const OrderNotificationModel: Model<IOrderNotifcation> =
     model<IOrderNotifcation>(
         "OrderNotification",
-        notificationSchema,
+        orderNotificationSchema,
         "OrderNotification"
     );
 export { OrderNotificationModel };
