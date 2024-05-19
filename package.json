@@ -4,6 +4,7 @@
   "main": "app.js",
   "scripts": {
     "start:dev": "set NODE_ENV=development&&nodemon -r tsconfig-paths/register src/app.ts | pino-pretty -c",
+        "start:prod": "set NODE_ENV=production&&nodemon -r tsconfig-paths/register src/app.ts | pino-pretty -c",
     "start": "pm2 start ./build/src/app.js -i 5 --attach --watch | pino-pretty -c",
     "stop": "pm2 stop all",
     "delete": "pm2 delete all",
@@ -35,6 +36,7 @@
     "joi": "^17.11.0",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.1.0",
+    "morgan": "^1.10.0",
     "nodemon": "^3.0.2",
     "pino-pretty": "^10.3.1",
     "socket.io": "^4.7.4",
@@ -54,6 +56,7 @@
     "@types/jest": "^29.5.11",
     "@types/jsonwebtoken": "^9.0.5",
     "@types/lodash": "^4.14.202",
+    "@types/morgan": "^1.9.9",
     "@types/supertest": "^6.0.2",
     "@typescript-eslint/eslint-plugin": "^6.18.1",
     "@typescript-eslint/parser": "^6.18.1",
