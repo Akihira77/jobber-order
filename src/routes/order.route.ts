@@ -1,21 +1,42 @@
+import { OrderController } from "@order/controllers/order.controller";
 import express, { Router } from "express";
-import * as orderController from "@order/controllers/order.controller";
 
 const router = express.Router();
 
-export function orderRoutes(): Router {
-    router.get("/:orderId", orderController.getOrderbyOrderId);
-    router.get("/buyer/:buyerId", orderController.getOrdersbyBuyerId);
-    router.get("/seller/:sellerId", orderController.getOrdersbySellerId);
+export function orderRoutes(controller: OrderController): Router {
+    router.get("/:orderId", controller.getOrderbyOrderId.bind(controller));
+    router.get(
+        "/buyer/:buyerId",
+        controller.getOrdersbyBuyerId.bind(controller)
+    );
+    router.get(
+        "/seller/:sellerId",
+        controller.getOrdersbySellerId.bind(controller)
+    );
 
-    router.post("/", orderController.createOrder);
-    router.post("/create-payment-intent", orderController.createOrderIntent);
+    router.post("/", controller.createOrder.bind(controller));
+    router.post(
+        "/create-payment-intent",
+        controller.createOrderIntent.bind(controller)
+    );
 
-    router.put("/approve-order/:orderId", orderController.buyerApproveOrder);
-    router.put("/cancel/:orderId", orderController.cancelOrder);
-    router.put("/gig/:type/:orderId", orderController.updateDeliveryDate);
-    router.put("/extension/:orderId", orderController.sellerRequestExtension);
-    router.put("/deliver-order/:orderId", orderController.sellerDeliverOrder);
+    router.put(
+        "/approve-order/:orderId",
+        controller.buyerApproveOrder.bind(controller)
+    );
+    router.put("/cancel/:orderId", controller.cancelOrder.bind(controller));
+    router.put(
+        "/gig/:type/:orderId",
+        controller.updateDeliveryDate.bind(controller)
+    );
+    router.put(
+        "/extension/:orderId",
+        controller.sellerRequestExtension.bind(controller)
+    );
+    router.put(
+        "/deliver-order/:orderId",
+        controller.sellerDeliverOrder.bind(controller)
+    );
 
     return router;
 }

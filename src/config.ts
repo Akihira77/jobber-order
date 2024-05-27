@@ -1,7 +1,4 @@
 import dotenv from "dotenv";
-import cloudinary from "cloudinary";
-import { Logger } from "winston";
-import { winstonLogger } from "@Akihira77/jobber-shared";
 
 if (process.env.NODE_ENV !== "production") {
     dotenv.config({ path: "./.env" });
@@ -29,25 +26,18 @@ export const {
     ENABLE_APM
 } = process.env;
 
-if (NODE_ENV === "production" && ENABLE_APM == "1") {
-    require("elastic-apm-node").start({
-        serviceName: `${ELASTIC_APM_SERVICE_NAME}`,
-        serverUrl: ELASTIC_APM_SERVER_URL,
-        secretToken: ELASTIC_APM_SECRET_TOKEN,
-        enironment: NODE_ENV,
-        active: true,
-        captureBody: "all",
-        errorOnAbortedRequests: true,
-        captureErrorLogStackTraces: "always"
-    });
-}
-
-export const cloudinaryConfig = () =>
-    cloudinary.v2.config({
-        cloud_name: CLOUD_NAME,
-        api_key: CLOUD_API_KEY,
-        api_secret: CLOUD_API_SECRET
-    });
+// if (NODE_ENV === "production" && ENABLE_APM == "1") {
+//     require("elastic-apm-node").start({
+//         serviceName: `${ELASTIC_APM_SERVICE_NAME}`,
+//         serverUrl: ELASTIC_APM_SERVER_URL,
+//         secretToken: ELASTIC_APM_SECRET_TOKEN,
+//         enironment: NODE_ENV,
+//         active: true,
+//         captureBody: "all",
+//         errorOnAbortedRequests: true,
+//         captureErrorLogStackTraces: "always"
+//     });
+// }
 
 export const exchangeNamesAndRoutingKeys = {
     notificationService: {
@@ -90,10 +80,3 @@ export const exchangeNamesAndRoutingKeys = {
         }
     }
 };
-
-export const logger = (moduleName?: string): Logger =>
-    winstonLogger(
-        `${ELASTIC_SEARCH_URL}`,
-        moduleName ?? "Order Service",
-        "debug"
-    );

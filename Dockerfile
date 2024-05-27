@@ -21,6 +21,7 @@ COPY package*.json ./
 COPY tsconfig.json ./
 COPY .npmrc ./
 RUN npm install -g pm2
+RUN pm2 link tr9576v2namo64f 4exhsd4gfwi476u
 RUN npm ci --production
 COPY --from=builder /app/build ./build
 

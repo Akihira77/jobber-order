@@ -1,16 +1,16 @@
+import { OrderController } from "@order/controllers/order.controller";
 import express, { Router } from "express";
-import * as orderController from "@order/controllers/order.controller";
 
 const router = express.Router();
 
-export function notificationRoutes(): Router {
+export function notificationRoutes(controller: OrderController): Router {
     router.get(
         "/notifications/:userToName",
-        orderController.findNotificationsByUserTo
+        controller.findNotificationsByUserTo.bind(controller)
     );
     router.put(
         "/notification/mark-as-read",
-        orderController.updateNotificationReadStatus
+        controller.updateNotificationReadStatus.bind(controller)
     );
 
     return router;

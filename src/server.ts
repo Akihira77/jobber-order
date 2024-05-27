@@ -8,13 +8,7 @@ import {
     IAuthPayload,
     IErrorResponse
 } from "@Akihira77/jobber-shared";
-import {
-    API_GATEWAY_URL,
-    JWT_TOKEN,
-    logger,
-    NODE_ENV,
-    PORT
-} from "@order/config";
+import { API_GATEWAY_URL, JWT_TOKEN, NODE_ENV, PORT } from "@order/config";
 import {
     Application,
     NextFunction,
@@ -26,26 +20,27 @@ import {
 import hpp from "hpp";
 import helmet from "helmet";
 import cors from "cors";
-import { checkConnection } from "@order/elasticsearch";
 import { appRoutes } from "@order/routes";
-import { createConnection } from "@order/queues/connection";
-import { Channel } from "amqplib";
 import { Server, Socket } from "socket.io";
-import { consumeReviewFanoutMessage } from "@order/queues/order.consumer";
 import { StatusCodes } from "http-status-codes";
-import morgan from "morgan";
+import { Logger } from "winston";
 
-export let orderChannel: Channel;
+import { ElasticSearchClient } from "./elasticsearch";
+import { OrderQueue } from "./queues/order.queue";
+
 export let socketIOOrderObject: Server;
 
-export function start(app: Application): void {
+export async function start(
+    app: Application,
+    logger: (moduleName: string) => Logger
+): Promise<void> {
+    const orderQueue = await startQueues(logger);
+    await startElasticSearch(logger);
     securityMiddleware(app);
     standardMiddleware(app);
-    routesMiddleware(app);
-    startQueues();
-    startElasticSearch();
     orderErrorHandler(app);
-    startServer(app);
+    routesMiddleware(app, orderQueue, logger);
+    startServer(app, logger);
 }
 
 function securityMiddleware(app: Application): void {
@@ -76,20 +71,30 @@ function standardMiddleware(app: Application): void {
     app.use(compression());
     app.use(json({ limit: "200mb" }));
     app.use(urlencoded({ extended: true, limit: "200mb" }));
-    app.use(morgan("dev"));
 }
 
-function routesMiddleware(app: Application): void {
-    appRoutes(app);
+function routesMiddleware(
+    app: Application,
+    queue: OrderQueue,
+    logger: (moduleName: string) => Logger
+): void {
+    appRoutes(app, queue, logger);
 }
 
-async function startQueues(): Promise<void> {
-    orderChannel = (await createConnection()) as Channel;
-    await consumeReviewFanoutMessage(orderChannel);
+async function startQueues(
+    logger: (moduleName: string) => Logger
+): Promise<OrderQueue> {
+    const orderChannel = new OrderQueue(null, logger);
+    await orderChannel.consumeReviewFanoutMessage();
+
+    return orderChannel;
 }
 
-function startElasticSearch(): void {
-    checkConnection();
+async function startElasticSearch(
+    logger: (moduleName: string) => Logger
+): Promise<void> {
+    const elasticClient = new ElasticSearchClient(logger);
+    await elasticClient.checkConnection();
 }
 
 function orderErrorHandler(app: Application): void {
@@ -110,23 +115,29 @@ function orderErrorHandler(app: Application): void {
     );
 }
 
-async function startServer(app: Application): Promise<void> {
+async function startServer(
+    app: Application,
+    logger: (moduleName: string) => Logger
+): Promise<void> {
     try {
         const httpServer: http.Server = new http.Server(app);
-        socketIOOrderObject = await createSocketIO(httpServer);
+        socketIOOrderObject = await createSocketIO(httpServer, logger);
 
         socketIOOrderObject.on("connection", (socket: Socket) => {
             logger("server.ts - startServer()").info(
                 `Socket receive a connection with id: ${socket.id}`
             );
         });
-        startHttpServer(httpServer);
+        startHttpServer(httpServer, logger);
     } catch (error) {
         console.log(error);
     }
 }
 
-async function createSocketIO(httpServer: http.Server): Promise<Server> {
+async function createSocketIO(
+    httpServer: http.Server,
+    logger: (moduleName: string) => Logger
+): Promise<Server> {
     const io: Server = new Server(httpServer, {
         cors: {
             origin: ["*"],
@@ -142,7 +153,10 @@ async function createSocketIO(httpServer: http.Server): Promise<Server> {
     return io;
 }
 
-function startHttpServer(httpServer: http.Server): void {
+function startHttpServer(
+    httpServer: http.Server,
+    logger: (moduleName: string) => Logger
+): void {
     try {
         // console.log(`Order server has started with pid ${process.pid}`);
         logger("server.ts - startHttpServer()").info(
