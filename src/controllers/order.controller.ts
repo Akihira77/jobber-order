@@ -12,13 +12,13 @@ import { Request, Response } from "express";
 import { StatusCodes } from "http-status-codes";
 import Stripe from "stripe";
 import { OrderService } from "@order/services/order.service";
-import { NotificationService } from "@order/services/notification.service";
+import { OrderNotificationService } from "@order/services/orderNotification.service";
 
 export class OrderController {
     private stripe: Stripe;
     constructor(
         private orderService: OrderService,
-        private notificationService: NotificationService
+        private orderNotificationService: OrderNotificationService
     ) {
         this.stripe = new Stripe(STRIPE_API_PRIVATE_KEY!, {
             typescript: true
@@ -30,7 +30,7 @@ export class OrderController {
         res: Response
     ): Promise<void> {
         const notifications =
-            await this.notificationService.getNotificationByUserToId(
+            await this.orderNotificationService.getNotificationByUserToId(
                 req.params.userToName
             );
 
@@ -45,7 +45,7 @@ export class OrderController {
         res: Response
     ): Promise<void> {
         const notification =
-            await this.notificationService.markNotificationAsRead(
+            await this.orderNotificationService.markNotificationAsRead(
                 req.body.notificationId
             );
 

@@ -5,7 +5,7 @@ import { notificationRoutes } from "@order/routes/notification.route";
 import { verifyGatewayRequest } from "@Akihira77/jobber-shared";
 import { Logger } from "winston";
 
-import { NotificationService } from "./services/notification.service";
+import { OrderNotificationService } from "./services/orderNotification.service";
 import { OrderService } from "./services/order.service";
 import { OrderQueue } from "./queues/order.queue";
 import { OrderController } from "./controllers/order.controller";
@@ -17,7 +17,7 @@ export function appRoutes(
     queue: OrderQueue,
     logger: (moduleName: string) => Logger
 ): void {
-    const notificationSvc = new NotificationService(logger);
+    const notificationSvc = new OrderNotificationService(logger);
     const orderSvc = new OrderService(queue, notificationSvc);
     const orderController = new OrderController(orderSvc, notificationSvc);
     app.use("", healthRoutes());

@@ -10,7 +10,7 @@ import { socketIOOrderObject } from "@order/server";
 import { isValidObjectId } from "mongoose";
 import { Logger } from "winston";
 
-export class NotificationService {
+export class OrderNotificationService {
     constructor(private logger: (moduleName: string) => Logger) {}
 
     async createNotification(

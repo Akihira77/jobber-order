@@ -1,5 +1,5 @@
 import { exchangeNamesAndRoutingKeys, RABBITMQ_ENDPOINT } from "@order/config";
-import { NotificationService } from "@order/services/notification.service";
+import { OrderNotificationService } from "@order/services/orderNotification.service";
 import { OrderService } from "@order/services/order.service";
 import client, { Channel, Connection, ConsumeMessage } from "amqplib";
 import { Logger } from "winston";
@@ -93,9 +93,8 @@ export class OrderQueue {
                             const { gigReview } = JSON.parse(
                                 msg!.content.toString()
                             );
-                            const notificationSvc = new NotificationService(
-                                this.logger
-                            );
+                            const notificationSvc =
+                                new OrderNotificationService(this.logger);
                             const orderSvc = new OrderService(
                                 this,
                                 notificationSvc

@@ -14,12 +14,12 @@ import { OrderModel } from "@order/models/order.model";
 import { OrderQueue } from "@order/queues/order.queue";
 import { orderSchema } from "@order/schemas/order.schema";
 
-import { NotificationService } from "./notification.service";
+import { OrderNotificationService } from "./orderNotification.service";
 
 export class OrderService {
     constructor(
         private queue: OrderQueue,
-        private notificationService: NotificationService
+        private orderNotificationService: OrderNotificationService
     ) {}
 
     async getOrderByOrderId(orderId: string): Promise<IOrderDocument> {
@@ -119,7 +119,7 @@ export class OrderService {
                 "Order email sent to notification service"
             );
 
-            this.notificationService.sendNotification(
+            this.orderNotificationService.sendNotification(
                 orderData,
                 data.sellerUsername,
                 "placed an order for your gig."
@@ -184,7 +184,7 @@ export class OrderService {
                 "Cancelled order deatils sent to notification service"
             );
 
-            this.notificationService.sendNotification(
+            this.orderNotificationService.sendNotification(
                 orderData,
                 orderData.sellerUsername,
                 "cancelled your order delivery."
@@ -255,7 +255,7 @@ export class OrderService {
                 "Approved order details sent to notification service"
             );
 
-            this.notificationService.sendNotification(
+            this.orderNotificationService.sendNotification(
                 orderData,
                 orderData.sellerUsername,
                 "approved your order delivery."
@@ -319,7 +319,7 @@ export class OrderService {
                 "Order delivered message sent to notification service"
             );
 
-            this.notificationService.sendNotification(
+            this.orderNotificationService.sendNotification(
                 orderData,
                 orderData.buyerUsername,
                 "delivered your order."
@@ -382,7 +382,7 @@ export class OrderService {
                 "Order extension message sent to notification service"
             );
 
-            this.notificationService.sendNotification(
+            this.orderNotificationService.sendNotification(
                 orderData,
                 orderData.buyerUsername,
                 "requested for an order delivery date extension."
@@ -454,7 +454,7 @@ export class OrderService {
                 "Order request extension approval message sent to notification service"
             );
 
-            this.notificationService.sendNotification(
+            this.orderNotificationService.sendNotification(
                 orderData,
                 orderData.sellerUsername,
                 "approved your order delivery date extension request."
@@ -518,7 +518,7 @@ export class OrderService {
                 "Order request extension rejection message sent to notification service"
             );
 
-            this.notificationService.sendNotification(
+            this.orderNotificationService.sendNotification(
                 orderData,
                 orderData.sellerUsername,
                 "rejected your order delivery date extension request."
@@ -590,7 +590,7 @@ export class OrderService {
                 );
             }
 
-            this.notificationService.sendNotification(
+            this.orderNotificationService.sendNotification(
                 orderData,
                 data.type === "buyer-review"
                     ? orderData.sellerUsername
