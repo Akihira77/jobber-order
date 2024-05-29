@@ -84,10 +84,11 @@ function routesMiddleware(
 async function startQueues(
     logger: (moduleName: string) => Logger
 ): Promise<OrderQueue> {
-    const orderChannel = new OrderQueue(null, logger);
-    await orderChannel.consumeReviewFanoutMessage();
+    const queue = new OrderQueue(null, logger);
+    await queue.createConnection();
+    queue.consumeReviewFanoutMessage();
 
-    return orderChannel;
+    return queue;
 }
 
 async function startElasticSearch(

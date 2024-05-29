@@ -12,22 +12,31 @@ import {
     ELASTIC_SEARCH_URL
 } from "./config";
 
-const initialize = async () => {
-    cloudinary.v2.config({
-        cloud_name: CLOUD_NAME,
-        api_key: CLOUD_API_KEY,
-        api_secret: CLOUD_API_SECRET
-    });
-
+const main = async () => {
     const logger = (moduleName?: string): Logger =>
         winstonLogger(
             `${ELASTIC_SEARCH_URL}`,
             moduleName ?? "Order Service",
             "debug"
         );
-    await databaseConnection(logger);
-    const app: Express = express();
-    await start(app, logger);
+
+    try {
+        cloudinary.v2.config({
+            cloud_name: CLOUD_NAME,
+            api_key: CLOUD_API_KEY,
+            api_secret: CLOUD_API_SECRET
+        });
+        const db = await databaseConnection(logger);
+        const app: Express = express();
+        await start(app, logger);
+
+        process.once("exit", async () => {
+            await db.connection.close();
+        });
+    } catch (error) {
+        logger("app.ts - main()").error(error);
+        process.exit(1);
+    }
 };
 
-initialize();
+main();
