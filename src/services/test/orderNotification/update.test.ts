@@ -110,14 +110,21 @@ describe("Update method", () => {
     });
 
     describe("markNotificationAsRead())", () => {
-        it("NotFound case", async () => {
+        it("Should throw an error because notificationId is invalid", async () => {
+            const notificationId = "wrong-notification-id";
+            await expect(
+                orderNotificationService.markNotificationAsRead(notificationId)
+            ).rejects.toThrow("Invalid notification id");
+        });
+
+        it("Should return not found message", async () => {
             const notificationId = "660246d911906db940f1c749";
             await expect(
                 orderNotificationService.markNotificationAsRead(notificationId)
             ).rejects.toThrow("OrderNotification is not found");
         });
 
-        it("Success case", async () => {
+        it("Should successfully updated isRead to true in database", async () => {
             const orderNotificationFromDb =
                 await orderNotificationService.getNotificationByUserToId(
                     data.sellerUsername

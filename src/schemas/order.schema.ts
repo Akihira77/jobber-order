@@ -1,32 +1,20 @@
 import Joi, { ObjectSchema } from "joi";
 
 const orderSchema: ObjectSchema = Joi.object().keys({
-    offer: Joi.object({
-        gigTitle: Joi.string().required(),
-        price: Joi.number().required(),
-        description: Joi.string().required(),
-        deliveryInDays: Joi.number().required(),
-        oldDeliveryDate: Joi.string().required(),
-        newDeliveryDate: Joi.string().optional(),
-        accepted: Joi.boolean().required(),
-        cancelled: Joi.boolean().required()
-    }).required(),
     gigId: Joi.string().required(),
+    gigMainTitle: Joi.string().required(),
+    gigBasicTitle: Joi.string().required(),
+    gigBasicDescription: Joi.string().required(),
+    gigCoverImage: Joi.string().required(),
     sellerId: Joi.string().required(),
     sellerUsername: Joi.string().required(),
     sellerEmail: Joi.string().required(),
     sellerImage: Joi.string().required(),
-    gigCoverImage: Joi.string().required(),
-    gigMainTitle: Joi.string().required(),
-    gigBasicTitle: Joi.string().required(),
-    gigBasicDescription: Joi.string().required(),
     buyerId: Joi.string().required(),
     buyerUsername: Joi.string().required(),
     buyerEmail: Joi.string().required(),
     buyerImage: Joi.string().required(),
     status: Joi.string().required(),
-    orderId: Joi.string().required(),
-    invoiceId: Joi.string().required(),
     quantity: Joi.number().required(),
     price: Joi.number().required(),
     serviceFee: Joi.number().optional(),
@@ -38,6 +26,16 @@ const orderSchema: ObjectSchema = Joi.object().keys({
         days: Joi.number().required(),
         reason: Joi.string().required()
     }).optional(),
+    offer: Joi.object({
+        gigTitle: Joi.string().required(),
+        price: Joi.number().required(),
+        description: Joi.string().required(),
+        deliveryInDays: Joi.number().required(),
+        oldDeliveryDate: Joi.string().required(),
+        newDeliveryDate: Joi.string().optional(),
+        accepted: Joi.boolean().required(),
+        cancelled: Joi.boolean().required()
+    }).required(),
     delivered: Joi.boolean().optional(),
     approvedAt: Joi.string().optional(),
     deliveredWork: Joi.array()

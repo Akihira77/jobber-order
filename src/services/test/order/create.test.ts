@@ -37,7 +37,7 @@ const events: IOrderEvents = {
     orderStarted: new Date().toString()
 };
 
-const data: IOrderDocument = {
+const requestNewOrder: IOrderDocument = {
     offer: offer,
     gigId: "65ea7e48d784cc0840f19069",
     sellerId: "65e9cc7c1d2eacf8631ba73b",
@@ -84,28 +84,28 @@ describe("Create method", () => {
 
     afterAll(async () => {
         await orderNotificationService.deleteOrderNotifications(
-            data.buyerUsername,
-            data.sellerUsername,
-            data.orderId
+            requestNewOrder.buyerUsername,
+            requestNewOrder.sellerUsername,
+            requestNewOrder.orderId
         );
         await orderNotificationService.deleteOrderNotifications(
-            data.sellerUsername,
-            data.sellerUsername,
-            data.orderId
+            requestNewOrder.sellerUsername,
+            requestNewOrder.sellerUsername,
+            requestNewOrder.orderId
         );
 
         await db.connection.close();
     });
 
     describe("createOrder() method", () => {
-        it("Empty case", async () => {
+        it("Should return error because parameters is required", async () => {
             await expect(
                 orderService.createOrder({} as IOrderDocument)
             ).rejects.toThrow('"offer" is required');
         });
 
-        it("Success case", async () => {
-            const result = await orderService.createOrder(data);
+        it("Should success creating order and saved to database", async () => {
+            const result = await orderService.createOrder(requestNewOrder);
             await orderService.deleteOrder(
                 result.gigId,
                 result.sellerId,

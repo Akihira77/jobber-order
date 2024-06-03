@@ -1,4 +1,5 @@
 import {
+    BadRequestError,
     CustomError,
     IOrderDocument,
     IOrderNotifcation,
@@ -52,7 +53,10 @@ export class OrderNotificationService {
     ): Promise<IOrderNotifcation> {
         try {
             if (!isValidObjectId(notificationId)) {
-                return {} as IOrderNotifcation;
+                throw new BadRequestError(
+                    "Invalid notification id",
+                    "markNotificationAsRead() method"
+                );
             }
 
             const notification = await OrderNotificationModel.findOneAndUpdate(
@@ -67,7 +71,9 @@ export class OrderNotificationService {
                 {
                     new: true
                 }
-            ).exec();
+            )
+                .lean()
+                .exec();
 
             if (!notification) {
                 throw new NotFoundError(
@@ -135,7 +141,9 @@ export class OrderNotificationService {
                 userTo,
                 senderUsername,
                 orderId
-            }).exec();
+            })
+                .lean()
+                .exec();
 
             return result.deletedCount > 0;
         } catch (error) {

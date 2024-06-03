@@ -1,5 +1,4 @@
 import { databaseConnection } from "@order/database";
-import express, { Express } from "express";
 import { start } from "@order/server";
 import cloudinary from "cloudinary";
 import { winstonLogger } from "@Akihira77/jobber-shared";
@@ -11,6 +10,7 @@ import {
     CLOUD_NAME,
     ELASTIC_SEARCH_URL
 } from "./config";
+import { Hono } from "hono";
 
 const main = async () => {
     const logger = (moduleName?: string): Logger =>
@@ -27,7 +27,7 @@ const main = async () => {
             api_secret: CLOUD_API_SECRET
         });
         const db = await databaseConnection(logger);
-        const app: Express = express();
+        const app = new Hono();
         await start(app, logger);
 
         process.once("exit", async () => {
