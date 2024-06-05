@@ -1,14 +1,14 @@
 import { Logger } from "winston";
+import { Context, Hono, Next } from "hono";
+import { StatusCodes } from "http-status-codes";
+import { NotAuthorizedError } from "@Akihira77/jobber-shared";
+import jwt from "jsonwebtoken";
 
 import { OrderNotificationService } from "./services/orderNotification.service";
 import { OrderService } from "./services/order.service";
 import { OrderQueue } from "./queues/order.queue";
 import { OrderHandler } from "./handler/order.handler";
-import { Context, Hono, Next } from "hono";
-import { StatusCodes } from "http-status-codes";
-import { NotAuthorizedError } from "@Akihira77/jobber-shared";
 import { GATEWAY_JWT_TOKEN } from "./config";
-import jwt from "jsonwebtoken";
 
 const BASE_PATH = "/api/v1/order";
 

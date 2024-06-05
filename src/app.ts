@@ -3,6 +3,7 @@ import { start } from "@order/server";
 import cloudinary from "cloudinary";
 import { winstonLogger } from "@Akihira77/jobber-shared";
 import { Logger } from "winston";
+import { Hono } from "hono";
 
 import {
     CLOUD_API_KEY,
@@ -10,7 +11,6 @@ import {
     CLOUD_NAME,
     ELASTIC_SEARCH_URL
 } from "./config";
-import { Hono } from "hono";
 
 const main = async () => {
     const logger = (moduleName?: string): Logger =>

@@ -149,7 +149,7 @@ export class OrderHandler {
         return orders;
     }
 
-    async cancelOrder(orderId: string, reqBody: any): Promise<Boolean> {
+    async cancelOrder(orderId: string, reqBody: any): Promise<boolean> {
         await this.stripe.refunds.create({
             payment_intent: `${reqBody.paymentIntentId}`
         });
