@@ -8,13 +8,13 @@ import {
     IReviewMessageDetails,
     lowerCase,
     NotFoundError
-} from "@Akihira77/jobber-shared";
-import { exchangeNamesAndRoutingKeys, CLIENT_URL } from "@order/config";
-import { OrderModel } from "@order/models/order.model";
-import { OrderQueue } from "@order/queues/order.queue";
-import { orderSchema } from "@order/schemas/order.schema";
+} from "@Akihira77/jobber-shared"
+import { exchangeNamesAndRoutingKeys, CLIENT_URL } from "@order/config"
+import { OrderModel } from "@order/models/order.model"
+import { OrderQueue } from "@order/queues/order.queue"
+import { orderSchema } from "@order/schemas/order.schema"
 
-import { OrderNotificationService } from "./orderNotification.service";
+import { OrderNotificationService } from "./orderNotification.service"
 
 export class OrderService {
     constructor(
@@ -24,67 +24,67 @@ export class OrderService {
 
     async getOrderByOrderId(orderId: string): Promise<IOrderDocument> {
         try {
-            const order = await OrderModel.findOne({ orderId }).lean().exec();
+            const order = await OrderModel.findOne({ orderId }).lean().exec()
 
             if (!order) {
                 throw new NotFoundError(
                     "Order is not found",
                     "getOrderByOrderId() method"
-                );
+                )
             }
 
-            return order;
+            return order
         } catch (error) {
-            console.log(error);
+            console.log(error)
             if (error instanceof CustomError) {
-                throw error;
+                throw error
             }
-            throw new Error("Unexpected error occured. Please try again.");
+            throw new Error("Unexpected error occured. Please try again.")
         }
     }
 
     async getOrdersBySellerId(sellerId: string): Promise<IOrderDocument[]> {
         try {
-            const order = await OrderModel.find({ sellerId }).lean().exec();
+            const order = await OrderModel.find({ sellerId }).lean().exec()
 
-            return order;
+            return order
         } catch (error) {
-            console.log(error);
-            throw new Error("Unexpected error occured. Please try again.");
+            console.log(error)
+            throw new Error("Unexpected error occured. Please try again.")
         }
     }
 
     async getOrdersByBuyerId(buyerId: string): Promise<IOrderDocument[]> {
         try {
-            const order = await OrderModel.find({ buyerId }).lean().exec();
+            const order = await OrderModel.find({ buyerId }).lean().exec()
 
-            return order;
+            return order
         } catch (error) {
-            console.log(error);
-            throw new Error("Unexpected error occured. Please try again.");
+            console.log(error)
+            throw new Error("Unexpected error occured. Please try again.")
         }
     }
 
     async createOrder(data: IOrderDocument): Promise<IOrderDocument> {
         try {
-            const { error } = orderSchema.validate(data);
+            const { error } = orderSchema.validate(data)
 
             if (error?.details) {
                 throw new BadRequestError(
                     error.details[0].message,
                     "createOrder() method"
-                );
+                )
             }
 
-            const orderData: IOrderDocument = await OrderModel.create(data);
+            const orderData: IOrderDocument = await OrderModel.create(data)
             const messageDetails: IOrderMessage = {
                 sellerId: data.sellerId,
                 ongoingJobs: 1,
                 type: "create-order"
-            };
+            }
             const emailMessageDetails: IOrderMessage & {
-                sellerEmail: string;
-                buyerEmail: string;
+                sellerEmail: string
+                buyerEmail: string
             } = {
                 orderId: data.orderId,
                 invoiceId: data.invoiceId,
@@ -101,37 +101,37 @@ export class OrderService {
                 total: `${orderData.price + orderData.serviceFee!}`,
                 orderUrl: `${CLIENT_URL}/orders/${data.orderId}/activities`,
                 template: "orderPlaced"
-            };
+            }
             const { usersService, notificationService } =
-                exchangeNamesAndRoutingKeys;
+                exchangeNamesAndRoutingKeys
 
             this.queue.publishDirectMessage(
                 usersService.seller.exchangeName,
                 usersService.seller.routingKey,
                 JSON.stringify(messageDetails),
                 "Details sent to users service"
-            );
+            )
 
             this.queue.publishDirectMessage(
                 notificationService.order.exchangeName,
                 notificationService.order.routingKey,
                 JSON.stringify(emailMessageDetails),
                 "Order email sent to notification service"
-            );
+            )
 
             this.orderNotificationService.sendNotification(
                 orderData,
                 data.sellerUsername,
                 "placed an order for your gig."
-            );
+            )
 
-            return orderData;
+            return orderData
         } catch (error) {
             if (error instanceof CustomError) {
-                throw error;
+                throw error
             }
 
-            throw new Error("Unexpected error occured. Please try again.");
+            throw new Error("Unexpected error occured. Please try again.")
         }
     }
 
@@ -150,16 +150,16 @@ export class OrderService {
                     }
                 },
                 { new: true }
-            ).exec();
+            ).exec()
 
             if (!orderData) {
                 throw new NotFoundError(
                     "Order is not found",
                     "cancelOrder() method"
-                );
+                )
             }
 
-            const { usersService } = exchangeNamesAndRoutingKeys;
+            const { usersService } = exchangeNamesAndRoutingKeys
 
             // update seller info
             this.queue.publishDirectMessage(
@@ -170,7 +170,7 @@ export class OrderService {
                     type: "cancel-order"
                 }),
                 "Cancelled order details sent to users service"
-            );
+            )
 
             // update buyer info
             this.queue.publishDirectMessage(
@@ -181,22 +181,22 @@ export class OrderService {
                     buyerId: data.buyerId,
                     purchasedGigs: data.purchasedGigs
                 }),
-                "Cancelled order deatils sent to notification service"
-            );
+                "Cancelled order details sent to notification service"
+            )
 
             this.orderNotificationService.sendNotification(
                 orderData,
                 orderData.sellerUsername,
                 "cancelled your order delivery."
-            );
+            )
 
-            return orderData;
+            return orderData
         } catch (error) {
             if (error instanceof CustomError) {
-                console.log(error);
-                throw error;
+                console.log(error)
+                throw error
             }
-            throw new Error("Unexpected error occured. Please try again.");
+            throw new Error("Unexpected error occured. Please try again.")
         }
     }
 
@@ -215,16 +215,16 @@ export class OrderService {
                     }
                 },
                 { new: true }
-            ).exec();
+            ).exec()
 
             if (!orderData) {
                 throw new NotFoundError(
                     "Order is not found",
                     "approveOrder() method"
-                );
+                )
             }
 
-            const { usersService } = exchangeNamesAndRoutingKeys;
+            const { usersService } = exchangeNamesAndRoutingKeys
             const messageDetails: IOrderMessage = {
                 sellerId: data.sellerId,
                 buyerId: data.buyerId,
@@ -233,7 +233,7 @@ export class OrderService {
                 totalEarnings: data.totalEarnings, // this is the price the seller earned for lastest order delivered
                 recentDelivery: new Date()?.toString(),
                 type: "approve-order"
-            };
+            }
 
             // update seller info
             this.queue.publishDirectMessage(
@@ -241,7 +241,7 @@ export class OrderService {
                 usersService.seller.routingKey,
                 JSON.stringify(messageDetails),
                 "Approved order details sent to users service"
-            );
+            )
 
             // update buyer info
             this.queue.publishDirectMessage(
@@ -253,21 +253,21 @@ export class OrderService {
                     purchasedGigs: data.purchasedGigs
                 }),
                 "Approved order details sent to notification service"
-            );
+            )
 
             this.orderNotificationService.sendNotification(
                 orderData,
                 orderData.sellerUsername,
                 "approved your order delivery."
-            );
+            )
 
-            return orderData;
+            return orderData
         } catch (error) {
-            console.log(error);
+            console.log(error)
             if (error instanceof CustomError) {
-                throw error;
+                throw error
             }
-            throw new Error("Unexpected error occured. Please try again.");
+            throw new Error("Unexpected error occured. Please try again.")
         }
     }
 
@@ -290,16 +290,16 @@ export class OrderService {
                     }
                 },
                 { new: true }
-            ).exec();
+            ).exec()
 
             if (!orderData) {
                 throw new NotFoundError(
                     "Order is not found",
                     "deliverOrder() method"
-                );
+                )
             }
 
-            const { notificationService } = exchangeNamesAndRoutingKeys;
+            const { notificationService } = exchangeNamesAndRoutingKeys
             const messageDetails: IOrderMessage = {
                 orderId,
                 buyerUsername: lowerCase(orderData.buyerUsername),
@@ -309,7 +309,7 @@ export class OrderService {
                 description: orderData.offer.description,
                 orderUrl: `${CLIENT_URL}/orders/${orderId}/activities`,
                 template: "orderDelivered"
-            };
+            }
 
             // sent email
             this.queue.publishDirectMessage(
@@ -317,22 +317,22 @@ export class OrderService {
                 notificationService.order.routingKey,
                 JSON.stringify(messageDetails),
                 "Order delivered message sent to notification service"
-            );
+            )
 
             this.orderNotificationService.sendNotification(
                 orderData,
                 orderData.buyerUsername,
                 "delivered your order."
-            );
+            )
 
-            return orderData;
+            return orderData
         } catch (error) {
-            console.log(error);
+            console.log(error)
             if (error instanceof CustomError) {
-                throw error;
+                throw error
             }
 
-            throw new Error("Unexpected error occured. Please try again.");
+            throw new Error("Unexpected error occured. Please try again.")
         }
     }
 
@@ -341,7 +341,7 @@ export class OrderService {
         data: IExtendedDelivery
     ): Promise<IOrderDocument> {
         try {
-            const { originalDate, newDate, days, reason } = data;
+            const { originalDate, newDate, days, reason } = data
             const orderData = await OrderModel.findOneAndUpdate(
                 { orderId },
                 {
@@ -353,16 +353,16 @@ export class OrderService {
                     }
                 },
                 { new: true }
-            ).exec();
+            ).exec()
 
             if (!orderData) {
                 throw new NotFoundError(
                     "Order is not found",
                     "requestDeliveryExtension() method"
-                );
+                )
             }
 
-            const { notificationService } = exchangeNamesAndRoutingKeys;
+            const { notificationService } = exchangeNamesAndRoutingKeys
             const messageDetails: IOrderMessage = {
                 buyerUsername: lowerCase(orderData.buyerUsername),
                 receiverEmail: orderData.buyerEmail,
@@ -372,7 +372,7 @@ export class OrderService {
                 reason: orderData.offer.reason,
                 orderUrl: `${CLIENT_URL}/orders/${orderId}/activities`,
                 template: "orderExtension"
-            };
+            }
 
             // sent email
             this.queue.publishDirectMessage(
@@ -380,22 +380,22 @@ export class OrderService {
                 notificationService.order.routingKey,
                 JSON.stringify(messageDetails),
                 "Order extension message sent to notification service"
-            );
+            )
 
             this.orderNotificationService.sendNotification(
                 orderData,
                 orderData.buyerUsername,
                 "requested for an order delivery date extension."
-            );
+            )
 
-            return orderData;
+            return orderData
         } catch (error) {
-            console.log(error);
+            console.log(error)
             if (error instanceof CustomError) {
-                throw error;
+                throw error
             }
 
-            throw new Error("Unexpected error occured. Please try again.");
+            throw new Error("Unexpected error occured. Please try again.")
         }
     }
 
@@ -404,7 +404,7 @@ export class OrderService {
         data: IExtendedDelivery
     ): Promise<IOrderDocument> {
         try {
-            const { deliveryDateUpdate, newDate, days, reason } = data;
+            const { deliveryDateUpdate, newDate, days, reason } = data
             const orderData = await OrderModel.findOneAndUpdate(
                 { orderId },
                 {
@@ -424,16 +424,16 @@ export class OrderService {
                     }
                 },
                 { new: true }
-            ).exec();
+            ).exec()
 
             if (!orderData) {
                 throw new NotFoundError(
                     "Order is not found",
                     "approveExtensionDeliveryDate() method"
-                );
+                )
             }
 
-            const { notificationService } = exchangeNamesAndRoutingKeys;
+            const { notificationService } = exchangeNamesAndRoutingKeys
             const messageDetails: IOrderMessage = {
                 subject: "Congratulations: Your extension request was approved",
                 buyerUsername: lowerCase(orderData.buyerUsername),
@@ -444,7 +444,7 @@ export class OrderService {
                 message: "You can continue working on the order.",
                 orderUrl: `${CLIENT_URL}/orders/${orderId}/activities`,
                 template: "orderExtensionApproval"
-            };
+            }
 
             // sent email
             this.queue.publishDirectMessage(
@@ -452,22 +452,22 @@ export class OrderService {
                 notificationService.order.routingKey,
                 JSON.stringify(messageDetails),
                 "Order request extension approval message sent to notification service"
-            );
+            )
 
             this.orderNotificationService.sendNotification(
                 orderData,
                 orderData.sellerUsername,
                 "approved your order delivery date extension request."
-            );
+            )
 
-            return orderData;
+            return orderData
         } catch (error) {
-            console.log(error);
+            console.log(error)
             if (error instanceof CustomError) {
-                throw error;
+                throw error
             }
 
-            throw new Error("Unexpected error occured. Please try again.");
+            throw new Error("Unexpected error occured. Please try again.")
         }
     }
 
@@ -488,16 +488,16 @@ export class OrderService {
                     }
                 },
                 { new: true }
-            ).exec();
+            ).exec()
 
             if (!orderData) {
                 throw new NotFoundError(
                     "Order is not found",
                     "rejectExtensionDeliveryDate() method"
-                );
+                )
             }
 
-            const { notificationService } = exchangeNamesAndRoutingKeys;
+            const { notificationService } = exchangeNamesAndRoutingKeys
             const messageDetails: IOrderMessage = {
                 subject: "Sorry: Your extension request was rejected",
                 buyerUsername: lowerCase(orderData.buyerUsername),
@@ -508,7 +508,7 @@ export class OrderService {
                 message: "You can contact the buyer for more information.",
                 orderUrl: `${CLIENT_URL}/orders/${orderId}/activities`,
                 template: "orderExtensionApproval"
-            };
+            }
 
             // sent email
             this.queue.publishDirectMessage(
@@ -516,22 +516,22 @@ export class OrderService {
                 notificationService.order.routingKey,
                 JSON.stringify(messageDetails),
                 "Order request extension rejection message sent to notification service"
-            );
+            )
 
             this.orderNotificationService.sendNotification(
                 orderData,
                 orderData.sellerUsername,
                 "rejected your order delivery date extension request."
-            );
+            )
 
-            return orderData;
+            return orderData
         } catch (error) {
-            console.log(error);
+            console.log(error)
             if (error instanceof CustomError) {
-                throw error;
+                throw error
             }
 
-            throw new Error("Unexpected error occured. Please try again.");
+            throw new Error("Unexpected error occured. Please try again.")
         }
     }
 
@@ -543,7 +543,7 @@ export class OrderService {
                 throw new BadRequestError(
                     "You're neither buyer or seller. Can't access this resource.",
                     "updateOrderReview() method"
-                );
+                )
             }
 
             const orderData = await OrderModel.findOneAndUpdate(
@@ -581,13 +581,13 @@ export class OrderService {
                               }
                 },
                 { new: true }
-            ).exec();
+            ).exec()
 
             if (!orderData) {
                 throw new NotFoundError(
                     "Order is not found",
                     "updateOrderReview() method"
-                );
+                )
             }
 
             this.orderNotificationService.sendNotification(
@@ -596,16 +596,16 @@ export class OrderService {
                     ? orderData.sellerUsername
                     : orderData.buyerUsername,
                 `left you a ${data.rating} start review`
-            );
+            )
 
-            return orderData;
+            return orderData
         } catch (error) {
-            console.log(error);
+            console.log(error)
             if (error instanceof CustomError) {
-                throw error;
+                throw error
             }
 
-            throw new Error("Unexpected error occured. Please try again");
+            throw new Error("Unexpected error occured. Please try again")
         }
     }
 
@@ -619,12 +619,12 @@ export class OrderService {
                 gigId,
                 sellerId,
                 orderId
-            }).exec();
+            }).exec()
 
-            return result.deletedCount > 0;
+            return result.deletedCount > 0
         } catch (error) {
-            console.log(error);
-            throw new Error("Unexpected error occured. Please try again.");
+            console.log(error)
+            throw new Error("Unexpected error occured. Please try again.")
         }
     }
 }

@@ -3,19 +3,19 @@ import {
     IOrderDocument,
     IOrderEvents,
     winstonLogger
-} from "@Akihira77/jobber-shared";
+} from "@Akihira77/jobber-shared"
 import {
     CLOUD_NAME,
     CLOUD_API_KEY,
     CLOUD_API_SECRET,
     ELASTIC_SEARCH_URL
-} from "@order/config";
-import { databaseConnection } from "@order/database";
-import { OrderQueue } from "@order/queues/order.queue";
-import { OrderService } from "@order/services/order.service";
-import { OrderNotificationService } from "@order/services/orderNotification.service";
-import cloudinary from "cloudinary";
-import { Logger } from "winston";
+} from "@order/config"
+import { databaseConnection } from "@order/database"
+import { OrderQueue } from "@order/queues/order.queue"
+import { OrderService } from "@order/services/order.service"
+import { OrderNotificationService } from "@order/services/orderNotification.service"
+import cloudinary from "cloudinary"
+import { Logger } from "winston"
 
 const offer: IOffer = {
     gigTitle:
@@ -28,13 +28,13 @@ const offer: IOffer = {
     newDeliveryDate: new Date().toString(),
     accepted: true,
     cancelled: false
-};
+}
 
 const events: IOrderEvents = {
     placeOrder: new Date().toString(),
     requirements: new Date().toString(),
     orderStarted: new Date().toString()
-};
+}
 
 const data: IOrderDocument = {
     offer: offer,
@@ -68,74 +68,74 @@ const data: IOrderDocument = {
     serviceFee: 2.5,
     paymentIntent: "pi_3Oy4YCLhVVbUWRAR0TwXiX3c",
     events: events
-};
+}
 
 cloudinary.v2.config({
     cloud_name: CLOUD_NAME,
     api_key: CLOUD_API_KEY,
     api_secret: CLOUD_API_SECRET
-});
+})
 const logger = (moduleName?: string): Logger =>
     winstonLogger(
         `${ELASTIC_SEARCH_URL}`,
         moduleName ?? "Order Service",
         "debug"
-    );
+    )
 
-let db: any;
-let orderNotificationService: OrderNotificationService;
-let orderService: OrderService;
+let db: any
+let orderNotificationService: OrderNotificationService
+let orderService: OrderService
 describe("Update method", () => {
     beforeAll(async () => {
-        await databaseConnection(logger);
-        const queue = new OrderQueue(null, logger);
-        orderNotificationService = new OrderNotificationService(logger);
-        orderService = new OrderService(queue, orderNotificationService);
-        await orderService.createOrder(data);
-    });
+        await databaseConnection()
+        const queue = new OrderQueue(null, logger)
+        orderNotificationService = new OrderNotificationService(logger)
+        orderService = new OrderService(queue, orderNotificationService)
+        await orderService.createOrder(data)
+    })
 
     afterAll(async () => {
-        await db.connection.close();
-        await orderService.deleteOrder(data.gigId, data.sellerId, data.orderId);
+        await db.connection.close()
+        await orderService.deleteOrder(data.gigId, data.sellerId, data.orderId)
         await orderNotificationService.deleteOrderNotifications(
             data.buyerUsername,
             data.sellerUsername,
             data.orderId
-        );
+        )
         await orderNotificationService.deleteOrderNotifications(
             data.sellerUsername,
             data.sellerUsername,
             data.orderId
-        );
-    });
+        )
+    })
 
     describe("markNotificationAsRead())", () => {
         it("Should throw an error because notificationId is invalid", async () => {
-            const notificationId = "wrong-notification-id";
+            const notificationId = "wrong-notification-id"
             await expect(
                 orderNotificationService.markNotificationAsRead(notificationId)
-            ).rejects.toThrow("Invalid notification id");
-        });
+            ).rejects.toThrow("Invalid notification id")
+        })
 
         it("Should return not found message", async () => {
-            const notificationId = "660246d911906db940f1c749";
+            const notificationId = "660246d911906db940f1c749"
             await expect(
                 orderNotificationService.markNotificationAsRead(notificationId)
-            ).rejects.toThrow("OrderNotification is not found");
-        });
+            ).rejects.toThrow("OrderNotification is not found")
+        })
 
         it("Should successfully updated isRead to true in database", async () => {
             const orderNotificationFromDb =
                 await orderNotificationService.getNotificationByUserToId(
                     data.sellerUsername
-                );
+                )
 
             const result =
                 await orderNotificationService.markNotificationAsRead(
                     orderNotificationFromDb[0]._id!
-                );
+                )
 
-            expect(result.isRead).toEqual(true);
-        });
-    });
-});
+            expect(result.isRead).toEqual(true)
+        })
+    })
+})

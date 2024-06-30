@@ -3,20 +3,20 @@ import {
     IOrderDocument,
     IOrderEvents,
     winstonLogger
-} from "@Akihira77/jobber-shared";
-import { ELASTIC_SEARCH_URL } from "@order/config";
-import { databaseConnection } from "@order/database";
-import { OrderQueue } from "@order/queues/order.queue";
-import { OrderService } from "@order/services/order.service";
-import { OrderNotificationService } from "@order/services/orderNotification.service";
-import { Logger } from "winston";
+} from "@Akihira77/jobber-shared"
+import { ELASTIC_SEARCH_URL } from "@order/config"
+import { databaseConnection } from "@order/database"
+import { OrderQueue } from "@order/queues/order.queue"
+import { OrderService } from "@order/services/order.service"
+import { OrderNotificationService } from "@order/services/orderNotification.service"
+import { Logger } from "winston"
 
 const logger = (moduleName?: string): Logger =>
     winstonLogger(
         `${ELASTIC_SEARCH_URL}`,
         moduleName ?? "Order Service",
         "debug"
-    );
+    )
 
 const offer: IOffer = {
     gigTitle:
@@ -29,13 +29,13 @@ const offer: IOffer = {
     newDeliveryDate: new Date().toString(),
     accepted: true,
     cancelled: false
-};
+}
 
 const events: IOrderEvents = {
     placeOrder: new Date().toString(),
     requirements: new Date().toString(),
     orderStarted: new Date().toString()
-};
+}
 
 const requestNewOrder: IOrderDocument = {
     offer: offer,
@@ -69,49 +69,49 @@ const requestNewOrder: IOrderDocument = {
     serviceFee: 2.5,
     paymentIntent: "pi_3Oy4YCLhVVbUWRAR0TwXiX3c",
     events: events
-};
+}
 
 describe("Create method", () => {
-    let db: any;
-    let orderNotificationService: OrderNotificationService;
-    let orderService: OrderService;
+    let db: any
+    let orderNotificationService: OrderNotificationService
+    let orderService: OrderService
     beforeAll(async () => {
-        await databaseConnection(logger);
-        orderNotificationService = new OrderNotificationService(logger);
-        const queue = new OrderQueue(null, logger);
-        orderService = new OrderService(queue, orderNotificationService);
-    });
+        await databaseConnection()
+        orderNotificationService = new OrderNotificationService(logger)
+        const queue = new OrderQueue(null, logger)
+        orderService = new OrderService(queue, orderNotificationService)
+    })
 
     afterAll(async () => {
         await orderNotificationService.deleteOrderNotifications(
             requestNewOrder.buyerUsername,
             requestNewOrder.sellerUsername,
             requestNewOrder.orderId
-        );
+        )
         await orderNotificationService.deleteOrderNotifications(
             requestNewOrder.sellerUsername,
             requestNewOrder.sellerUsername,
             requestNewOrder.orderId
-        );
+        )
 
-        await db.connection.close();
-    });
+        await db.connection.close()
+    })
 
     describe("createOrder() method", () => {
         it("Should return error because parameters is required", async () => {
             await expect(
                 orderService.createOrder({} as IOrderDocument)
-            ).rejects.toThrow('"offer" is required');
-        });
+            ).rejects.toThrow('"offer" is required')
+        })
 
         it("Should success creating order and saved to database", async () => {
-            const result = await orderService.createOrder(requestNewOrder);
+            const result = await orderService.createOrder(requestNewOrder)
             await orderService.deleteOrder(
                 result.gigId,
                 result.sellerId,
                 result.orderId
-            );
-            expect(result).not.toBeNull();
-        });
-    });
-});
+            )
+            expect(result).not.toBeNull()
+        })
+    })
+})

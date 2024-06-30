@@ -4,12 +4,12 @@ import {
     IOrderDocument,
     IOrderNotifcation,
     NotFoundError
-} from "@Akihira77/jobber-shared";
-import { OrderModel } from "@order/models/order.model";
-import { OrderNotificationModel } from "@order/models/orderNotification.model";
-import { socketIOOrderObject } from "@order/server";
-import { isValidObjectId } from "mongoose";
-import { Logger } from "winston";
+} from "@Akihira77/jobber-shared"
+import { OrderModel } from "@order/models/order.model"
+import { OrderNotificationModel } from "@order/models/orderNotification.model"
+import { socketIOOrderObject } from "@order/server"
+import { isValidObjectId } from "mongoose"
+import { Logger } from "winston"
 
 export class OrderNotificationService {
     constructor(private logger: (moduleName: string) => Logger) {}
@@ -18,12 +18,12 @@ export class OrderNotificationService {
         request: IOrderNotifcation
     ): Promise<IOrderNotifcation> {
         try {
-            const notification = await OrderNotificationModel.create(request);
+            const notification = await OrderNotificationModel.create(request)
 
-            return notification;
+            return notification
         } catch (error) {
-            console.log(error);
-            throw new Error("Unexpected error occured. Please try again.");
+            console.log(error)
+            throw new Error("Unexpected error occured. Please try again.")
         }
     }
 
@@ -34,17 +34,17 @@ export class OrderNotificationService {
             const notification: IOrderNotifcation[] =
                 await OrderNotificationModel.find({ userTo: userToId })
                     .lean()
-                    .exec();
+                    .exec()
 
-            return notification;
+            return notification
         } catch (error) {
             this.logger(
                 "services/notification.service.ts - getNotificationByUserToId()"
             ).error(
                 "OrderService getNotificationByUserToId() method error:",
                 error
-            );
-            return [];
+            )
+            return []
         }
     }
 
@@ -56,7 +56,7 @@ export class OrderNotificationService {
                 throw new BadRequestError(
                     "Invalid notification id",
                     "markNotificationAsRead() method"
-                );
+                )
             }
 
             const notification = await OrderNotificationModel.findOneAndUpdate(
@@ -73,30 +73,30 @@ export class OrderNotificationService {
                 }
             )
                 .lean()
-                .exec();
+                .exec()
 
             if (!notification) {
                 throw new NotFoundError(
                     "OrderNotification is not found",
                     "markNotificationAsRead() method"
-                );
+                )
             }
 
             const order = await OrderModel.findOne({
                 orderId: notification.orderId
             })
                 .lean()
-                .exec();
+                .exec()
 
-            socketIOOrderObject.emit("order_notification", order);
-            return notification;
+            socketIOOrderObject?.emit("order_notification", order)
+            return notification
         } catch (error) {
-            console.log(error);
+            console.log(error)
             if (error instanceof CustomError) {
-                throw error;
+                throw error
             }
 
-            throw new Error("Unexpected error occured. Please try again.");
+            throw new Error("Unexpected error occured. Please try again.")
         }
     }
 
@@ -115,19 +115,19 @@ export class OrderNotificationService {
                 message,
                 orderId: request.orderId,
                 createdAt: new Date()
-            };
+            }
 
             const orderNotification =
-                await this.createNotification(notificationData);
+                await this.createNotification(notificationData)
 
-            socketIOOrderObject.emit(
+            socketIOOrderObject?.emit(
                 "order_notification",
                 request,
                 orderNotification
-            );
+            )
         } catch (error) {
-            console.log(error);
-            throw new Error("Unexpected error occured. Please try again.");
+            console.log(error)
+            throw new Error("Unexpected error occured. Please try again.")
         }
     }
 
@@ -143,12 +143,12 @@ export class OrderNotificationService {
                 orderId
             })
                 .lean()
-                .exec();
+                .exec()
 
-            return result.deletedCount > 0;
+            return result.deletedCount > 0
         } catch (error) {
-            console.log(error);
-            throw new Error("Unexpected error occured. Please try again.");
+            console.log(error)
+            throw new Error("Unexpected error occured. Please try again.")
         }
     }
 }
