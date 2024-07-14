@@ -88,9 +88,11 @@ let orderService: OrderService
 describe("Update method", () => {
     beforeAll(async () => {
         await databaseConnection()
-        const queue = new OrderQueue(null, logger)
+        const queue = new OrderQueue(logger)
+        const conn = await queue.createConnection()
+        const ch = await conn.createChannel()
         orderNotificationService = new OrderNotificationService(logger)
-        orderService = new OrderService(queue, orderNotificationService)
+        orderService = new OrderService(queue, ch, orderNotificationService)
         await orderService.createOrder(data)
     })
 

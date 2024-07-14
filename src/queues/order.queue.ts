@@ -1,136 +1,128 @@
-import { exchangeNamesAndRoutingKeys, RABBITMQ_ENDPOINT } from "@order/config";
-import { OrderNotificationService } from "@order/services/orderNotification.service";
-import { OrderService } from "@order/services/order.service";
-import client, { Channel, Connection, ConsumeMessage } from "amqplib";
-import { Logger } from "winston";
+import { exchangeNamesAndRoutingKeys, RABBITMQ_ENDPOINT } from "@order/config"
+import { OrderNotificationService } from "@order/services/orderNotification.service"
+import { OrderService } from "@order/services/order.service"
+import client, { Channel, Connection, ConsumeMessage } from "amqplib"
+import { Logger } from "winston"
+import typia from "typia"
+import { pubMQOrderObject } from "../server"
 
 export class OrderQueue {
-    constructor(
-        private ch: Channel | null,
-        private logger: (moduleName: string) => Logger
-    ) {}
+    constructor(private logger: (moduleName: string) => Logger) {}
 
-    async createConnection(): Promise<Channel> {
+    async createConnection(): Promise<Connection> {
         try {
             const connection: Connection = await client.connect(
                 `${RABBITMQ_ENDPOINT}`
-            );
-            this.ch = await connection.createChannel();
-            // console.log("Order server connected to queue successfully...");
+            )
+
             this.logger("queues/connection.ts - createConnection()").info(
                 "OrderService connected to RabbitMQ successfully..."
-            );
-            this.closeConnection(this.ch, connection);
+            )
+            this.closeConnection(connection)
 
-            return this.ch;
+            return connection
         } catch (error) {
             this.logger("queues/connection.ts - createConnection()").error(
                 "OrderService createConnection() method error:",
                 error
-            );
-            process.exit(1);
+            )
+            process.exit(1)
         }
     }
 
     async publishDirectMessage(
+        ch: Channel,
         exchangeName: string,
         routingKey: string,
         message: string,
         logMessage: string
     ): Promise<void> {
         try {
-            if (!this.ch) {
-                this.ch = await this.createConnection();
-            }
+            await ch.assertExchange(exchangeName, "direct")
 
-            await this.ch.assertExchange(exchangeName, "direct");
-
-            this.ch.publish(exchangeName, routingKey, Buffer.from(message));
-            this.logger(
-                "queues/order.producer.ts - publishDireectMessage()"
-            ).info(logMessage);
+            ch.publish(exchangeName, routingKey, Buffer.from(message))
+            // this.logger(
+            //     "queues/order.producer.ts - publishDirectMessage()"
+            // ).info(logMessage)
+            console.log(logMessage)
         } catch (error) {
             this.logger(
-                "queues/order.producer.ts - publishDireectMessage()"
+                "queues/order.producer.ts - publishDirectMessage()"
             ).error(
                 "OrderService QueueProducer publishDirectMessage() method error:",
                 error
-            );
+            )
         }
     }
 
-    async consumeReviewFanoutMessage(): Promise<void> {
+    async consumeReviewFanoutMessage(ch: Channel): Promise<void> {
         try {
-            if (!this.ch) {
-                this.ch = await this.createConnection();
-            }
+            const { reviewService } = exchangeNamesAndRoutingKeys
+            const queueName = "order-review-queue"
 
-            const { reviewService } = exchangeNamesAndRoutingKeys;
-            const queueName = "order-review-queue";
+            await ch.assertExchange(reviewService.review.exchangeName, "fanout")
 
-            await this.ch.assertExchange(
-                reviewService.review.exchangeName,
-                "fanout"
-            );
-
-            const jobberQueue = await this.ch.assertQueue(queueName, {
+            const jobberQueue = await ch.assertQueue(queueName, {
                 durable: true,
                 autoDelete: false
-            });
+            })
 
-            await this.ch.bindQueue(
+            await ch.bindQueue(
                 jobberQueue.queue,
                 reviewService.review.exchangeName,
                 ""
-            );
+            )
 
-            await this.ch.consume(
+            await ch.consume(
                 jobberQueue.queue,
                 async (msg: ConsumeMessage | null) => {
                     try {
-                        const { type } = JSON.parse(msg!.content.toString());
+                        const { type } = typia.json.isParse<any>(
+                            msg!.content.toString()
+                        )
                         if (type === "addReview") {
-                            const { gigReview } = JSON.parse(
+                            const { gigReview } = typia.json.isParse<any>(
                                 msg!.content.toString()
-                            );
+                            )
                             const notificationSvc =
-                                new OrderNotificationService(this.logger);
+                                new OrderNotificationService(this.logger)
                             const orderSvc = new OrderService(
-                                this,
+                                pubMQOrderObject,
+                                ch,
                                 notificationSvc
-                            );
-                            await orderSvc.updateOrderReview(gigReview);
+                            )
+                            await orderSvc.updateOrderReview(gigReview)
 
-                            this.ch!.ack(msg!);
+                            ch!.ack(msg!)
+                            return
                         }
 
-                        this.ch!.reject(msg!, false);
+                        ch!.reject(msg!, false)
                     } catch (error) {
-                        this.ch!.reject(msg!, false);
+                        ch!.reject(msg!, false)
 
                         this.logger(
                             "queues/order.queue.ts - consumeReviewFanoutMessage()"
                         ).error(
                             "consuming message got errors. consumeReviewFanoutMessage()",
                             error
-                        );
+                        )
                     }
                 }
-            );
+            )
         } catch (error) {
             this.logger(
                 "queues/order.queue.ts - consumeReviewFanoutMessage()"
             ).error(
                 "OrderService consumeReviewFanoutMessage() method error:",
                 error
-            );
+            )
         }
     }
 
-    closeConnection(channel: Channel, connection: Connection): void {
+    closeConnection(connection: Connection): void {
         process.once("SIGINT", async () => {
-            await channel.close();
-            await connection.close();
-        });
+            await connection.close()
+        })
     }
 }

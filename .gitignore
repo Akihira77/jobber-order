@@ -145,3 +145,5 @@ dist
 
 .env
 .npmrc
+build
+*.txt

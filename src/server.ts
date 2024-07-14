@@ -1,5 +1,5 @@
 import http from "http"
-
+import { createVerifier } from "fast-jwt"
 import {
     CustomError,
     IAuthPayload,
@@ -9,12 +9,9 @@ import {
     API_GATEWAY_URL,
     ELASTIC_SEARCH_URL,
     JWT_TOKEN,
+    NODE_ENV,
     PORT
 } from "@order/config"
-import jwt from "jsonwebtoken"
-import { appRoutes } from "@order/routes"
-import { Server, Socket } from "socket.io"
-import { StatusCodes } from "http-status-codes"
 import { Context, Hono, Next } from "hono"
 import { cors } from "hono/cors"
 import { compress } from "hono/compress"
@@ -22,40 +19,54 @@ import { timeout } from "hono/timeout"
 import { csrf } from "hono/csrf"
 import { secureHeaders } from "hono/secure-headers"
 import { bodyLimit } from "hono/body-limit"
+import { rateLimiter } from "hono-rate-limiter"
+import { HTTPException } from "hono/http-exception"
+import { appRoutes } from "@order/routes"
 import { Logger } from "winston"
+import { StatusCodes } from "http-status-codes"
 import { StatusCode } from "hono/utils/http-status"
 import { serve } from "@hono/node-server"
-import { ServerType } from "@hono/node-server/dist/types"
-import { HTTPException } from "hono/http-exception"
-import { rateLimiter } from "hono-rate-limiter"
 import { logger } from "hono/logger"
 import { OrderQueue } from "./queues/order.queue"
 import { ElasticSearchClient } from "./elasticsearch"
+import { App } from "uWebSockets.js"
+import { DisconnectReason, Server, Socket } from "socket.io"
+import { ServerType } from "@hono/node-server/dist/types"
+import { Channel } from "amqplib"
 
-export let socketIOOrderObject: Server | null
-const LIMIT_TIMEOUT = 2 * 1000 // 2s
+export let socketIOOrderObject: Server
+export let pubMQOrderObject: OrderQueue
+export let consumeMQOrderObject: OrderQueue
+const LIMIT_TIMEOUT = 3 * 1000 // 3s
 
-export async function setupHono(app: Hono): Promise<Hono> {
-    const logger = (moduleName?: string) =>
-        winstonLogger(
-            `${ELASTIC_SEARCH_URL}`,
-            moduleName ?? "server.ts",
-            "debug"
-        )
-    const orderQueue = await startQueues(logger)
+export async function setupHono(
+    app: Hono,
+    logger?: (location?: string) => Logger
+): Promise<Hono> {
+    if (!logger) {
+        logger = (location?: string) =>
+            winstonLogger(
+                `${ELASTIC_SEARCH_URL}`,
+                location ?? "server.ts",
+                "debug"
+            )
+    }
+
+    const { queue, ch } = await startQueues(logger)
     orderErrorHandler(app)
     securityMiddleware(app)
     standardMiddleware(app)
-    routesMiddleware(app, orderQueue, logger)
+    routesMiddleware(app, queue, ch, logger)
 
     return app
 }
+
 export async function start(
     app: Hono,
-    logger: (moduleName: string) => Logger
+    logger: (moduleName?: string) => Logger
 ): Promise<void> {
-    await startElasticSearch(logger)
-    app = await setupHono(app)
+    startElasticSearch(logger)
+    app = await setupHono(app, logger)
     startServer(app, logger)
 }
 
@@ -67,7 +78,11 @@ function securityMiddleware(app: Hono): void {
             })
         })
     )
-    app.use(secureHeaders({ xXssProtection: true }))
+    app.use(
+        secureHeaders({
+            xXssProtection: "1"
+        })
+    )
     app.use(csrf({ origin: [`${API_GATEWAY_URL}`] }))
     app.use(
         cors({
@@ -80,8 +95,13 @@ function securityMiddleware(app: Hono): void {
     app.use(async (c: Context, next: Next) => {
         const authorization = c.req.header("authorization")
         if (authorization && authorization !== "") {
-            const token = authorization.split(" ")[1]
-            const payload = jwt.verify(token, JWT_TOKEN!) as IAuthPayload
+            const authBearer = authorization.split(" ")[1]
+            const verifier = createVerifier({
+                key: `${JWT_TOKEN}`,
+                cache: true,
+                cacheTTL: 30 * 60 * 1000
+            })
+            const payload = verifier(authBearer) as IAuthPayload
             c.set("currentUser", payload)
         }
 
@@ -90,7 +110,9 @@ function securityMiddleware(app: Hono): void {
 }
 
 function standardMiddleware(app: Hono): void {
-    app.use(logger())
+    if (NODE_ENV !== "production") {
+        app.use(logger())
+    }
     app.use(compress())
     app.use(
         bodyLimit({
@@ -124,40 +146,52 @@ function standardMiddleware(app: Hono): void {
 function routesMiddleware(
     app: Hono,
     queue: OrderQueue,
+    ch: Channel,
     logger: (moduleName: string) => Logger
 ): void {
-    appRoutes(app, queue, logger)
+    appRoutes(app, queue, ch, logger)
 }
 
 async function startQueues(
     logger: (moduleName: string) => Logger
-): Promise<OrderQueue> {
-    const queue = new OrderQueue(null, logger)
-    await queue.createConnection()
-    queue.consumeReviewFanoutMessage()
+): Promise<{ queue: OrderQueue; ch: Channel }> {
+    const queue = new OrderQueue(logger)
+    const pub = await queue.createConnection()
+    const consume = await queue.createConnection()
+    const pubCh = await pub.createChannel()
+    const consumeCh = await consume.createChannel()
 
-    return queue
+    pubMQOrderObject = queue
+    consumeMQOrderObject = queue
+    queue.consumeReviewFanoutMessage(consumeCh)
+
+    return { queue: queue, ch: pubCh }
 }
 
-async function startElasticSearch(
+export async function startElasticSearch(
     logger: (moduleName: string) => Logger
-): Promise<void> {
-    const elasticClient = new ElasticSearchClient(logger)
-    await elasticClient.checkConnection()
+): Promise<ElasticSearchClient> {
+    const elastic = new ElasticSearchClient(logger)
+    await elastic.checkConnection()
+
+    return elastic
 }
 
 function orderErrorHandler(app: Hono): void {
     app.notFound((c) => {
-        return c.text("Route path is not found", StatusCodes.NOT_FOUND)
+        return c.text("Route path does not found", StatusCodes.NOT_FOUND)
     })
 
     app.onError((err: Error, c: Context) => {
         if (err instanceof CustomError) {
+            console.log(err)
             return c.json(
                 err.serializeErrors(),
                 (err.statusCode as StatusCode) ??
                     StatusCodes.INTERNAL_SERVER_ERROR
             )
+        } else if (err instanceof HTTPException) {
+            return err.getResponse()
         }
 
         return c.text(
@@ -172,44 +206,23 @@ async function startServer(
     logger: (moduleName: string) => Logger
 ): Promise<void> {
     try {
-        const server = startHttpServer(app, logger)
-        socketIOOrderObject = await createSocketIO(
-            server as http.Server,
-            logger
-        )
+        startHttpServer(app, logger)
+        socketIOOrderObject = await createSocketIO(logger)
 
-        socketIOOrderObject?.on("connection", (socket: Socket) => {
+        socketIOOrderObject.engine.on("connection", (rawSocket) => {
+            rawSocket.request = null
+        })
+
+        socketIOOrderObject.on("connection", (socket: Socket) => {
             logger("server.ts - startServer()").info(
                 `Socket receive a connection with id: ${socket.id}`
             )
 
-            socket.on("disconnect", () => {
+            socket.on("disconnect", (reason: DisconnectReason) => {
                 logger("server.ts - startServer()").info(
-                    `Connection with id: ${socket.id} disconnected`
+                    `Socket with id: ${socket.id} disconnected with reason: ${reason.toString()}`
                 )
-
-                destroy()
             })
-
-            let alive = Date.now()
-            socket.on("am_alive", () => {
-                alive = Date.now()
-            })
-
-            const intv = setInterval(() => {
-                if (Date.now() > alive + 20000) {
-                    //sever checks if clients has no activity in last 20s
-                    destroy()
-                    clearInterval(intv)
-                }
-            }, 10000)
-
-            function destroy() {
-                try {
-                    socket.disconnect()
-                    socket.removeAllListeners()
-                } catch {}
-            }
         })
     } catch (error) {
         console.log(error)
@@ -217,20 +230,37 @@ async function startServer(
 }
 
 async function createSocketIO(
-    httpServer: http.Server,
     logger: (moduleName: string) => Logger
 ): Promise<Server> {
-    const io: Server = new Server(httpServer, {
+    const uwsApp = App()
+    const io: Server = new Server({
         cors: {
             origin: ["*"],
             methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
             credentials: true
-        }
+        },
+        transports: ["websocket"]
     })
 
+    io.attachApp(uwsApp)
     // console.log("OrderService Socket connected");
     logger("server.ts - createSocketIO()").info("OrderService Socket connected")
 
+    io.engine.on("connection", (rawSocket) => {
+        rawSocket.request = null
+    })
+
+    uwsApp.listen(Number(PORT) - 1000, (token) => {
+        if (!token) {
+            logger("server.ts - createSocketIO()").warn(
+                "Port is already in use"
+            )
+        } else {
+            logger("server.ts - createSocketIO()").info(
+                `SocketIO x uWebSockets.js is running on port ${Number(PORT) - 1000}`
+            )
+        }
+    })
     return io
 }
 

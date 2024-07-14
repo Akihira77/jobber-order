@@ -1,4 +1,4 @@
-import crypto from "crypto";
+import crypto from "crypto"
 
 import {
     BadRequestError,
@@ -7,22 +7,23 @@ import {
     IDeliveredWork,
     IAuthPayload,
     IOrderNotifcation
-} from "@Akihira77/jobber-shared";
-import { STRIPE_API_PRIVATE_KEY } from "@order/config";
-import { orderSchema, orderUpdateSchema } from "@order/schemas/order.schema";
-import Stripe from "stripe";
-import { OrderService } from "@order/services/order.service";
-import { OrderNotificationService } from "@order/services/orderNotification.service";
+} from "@Akihira77/jobber-shared"
+import { STRIPE_API_PRIVATE_KEY } from "@order/config"
+import { OrderUpdateSchema } from "@order/schemas/order.schema"
+import Stripe from "stripe"
+import { OrderService } from "@order/services/order.service"
+import { OrderNotificationService } from "@order/services/orderNotification.service"
+import typia from "typia"
 
 export class OrderHandler {
-    private stripe: Stripe;
+    private stripe: Stripe
     constructor(
         private orderService: OrderService,
         private orderNotificationService: OrderNotificationService
     ) {
         this.stripe = new Stripe(STRIPE_API_PRIVATE_KEY!, {
             typescript: true
-        });
+        })
     }
 
     async findNotificationsByUserTo(
@@ -31,9 +32,9 @@ export class OrderHandler {
         const orderNotifs =
             await this.orderNotificationService.getNotificationByUserToId(
                 userToName
-            );
+            )
 
-        return orderNotifs;
+        return orderNotifs
     }
 
     async updateNotificationReadStatus(
@@ -42,9 +43,9 @@ export class OrderHandler {
         const orderNotif =
             await this.orderNotificationService.markNotificationAsRead(
                 notificationId
-            );
+            )
 
-        return orderNotif;
+        return orderNotif
     }
 
     async createOrderIntent(
@@ -55,8 +56,8 @@ export class OrderHandler {
             Stripe.ApiSearchResult<Stripe.Customer>
         > = await this.stripe.customers.search({
             query: `email:"${currUser.email}"`
-        });
-        let customerId: string = customer.data[0]?.id;
+        })
+        let customerId: string = customer.data[0]?.id
 
         if (customer.data.length === 0) {
             const createdCustomer: Stripe.Response<Stripe.Customer> =
@@ -65,11 +66,11 @@ export class OrderHandler {
                     metadata: {
                         buyerId: reqBody.buyerId
                     }
-                });
-            customerId = createdCustomer.id;
+                })
+            customerId = createdCustomer.id
         }
 
-        let paymentIntent: Stripe.Response<Stripe.PaymentIntent>;
+        let paymentIntent: Stripe.Response<Stripe.PaymentIntent>
 
         if (customerId) {
             // the service charge is 5.5% of the purchased amount
@@ -77,7 +78,7 @@ export class OrderHandler {
             const serviceFee: number =
                 reqBody.price < 50
                     ? (5.5 / 100) * reqBody.price + 2
-                    : (5.5 / 100) * reqBody.price;
+                    : (5.5 / 100) * reqBody.price
             paymentIntent = await this.stripe.paymentIntents.create({
                 amount: Math.floor((reqBody.price + serviceFee) * 100),
                 currency: "usd",
@@ -85,100 +86,98 @@ export class OrderHandler {
                 automatic_payment_methods: {
                     enabled: true
                 }
-            });
+            })
 
-            return paymentIntent;
+            return paymentIntent
         }
 
         throw new BadRequestError(
             "creating payment intent failed. Please try again.",
             "handler/order.handler.ts - createOrderIntent()"
-        );
+        )
     }
 
     async createOrder(reqBody: any): Promise<IOrderDocument> {
-        const { error, value } = orderSchema.validate(reqBody);
-
-        if (error?.details) {
-            throw new BadRequestError(
-                error.details[0].message,
-                "Create order() method"
-            );
-        }
-
         const generateRandomNumber = (length: number): number => {
             return (
                 Math.floor(Math.random() * (9 * Math.pow(10, length - 1))) +
                 Math.pow(10, length - 1)
-            );
-        };
+            )
+        }
 
         // the service charge is 5.5% of the purchased amount
         // for purchases under 50$, an additional $2 is applied
         const serviceFee: number =
-            value.price < 50
-                ? (5.5 / 100) * value.price + 2
-                : (5.5 / 100) * value.price;
+            reqBody.price < 50
+                ? (5.5 / 100) * reqBody.price + 2
+                : (5.5 / 100) * reqBody.price
         const orderData: IOrderDocument = {
-            ...value,
+            ...reqBody,
             orderId: `JO${generateRandomNumber(11)}`,
             invoiceId: `JI${generateRandomNumber(11)}`,
             serviceFee: serviceFee
-        };
+        }
         const order: IOrderDocument =
-            await this.orderService.createOrder(orderData);
+            await this.orderService.createOrder(orderData)
 
-        return order;
+        return order
     }
 
     async getOrderbyOrderId(orderId: string): Promise<IOrderDocument> {
-        const order = await this.orderService.getOrderByOrderId(orderId);
+        const order = await this.orderService.getOrderByOrderId(orderId)
 
-        return order;
+        return order
     }
 
     async getOrdersbySellerId(sellerId: string): Promise<IOrderDocument[]> {
-        const orders = await this.orderService.getOrdersBySellerId(sellerId);
+        const orders = await this.orderService.getOrdersBySellerId(sellerId)
 
-        return orders;
+        return orders
     }
 
     async getOrdersbyBuyerId(buyerId: string): Promise<IOrderDocument[]> {
-        const orders = await this.orderService.getOrdersByBuyerId(buyerId);
+        const orders = await this.orderService.getOrdersByBuyerId(buyerId)
 
-        return orders;
+        return orders
     }
 
     async cancelOrder(orderId: string, reqBody: any): Promise<boolean> {
         await this.stripe.refunds.create({
             payment_intent: `${reqBody.paymentIntentId}`
-        });
+        })
 
         const order = await this.orderService.cancelOrder(
             orderId,
             reqBody.orderData
-        );
+        )
 
-        return order !== null;
+        return order !== null
     }
 
     async sellerRequestExtension(
         orderId: string,
         reqBody: any
     ): Promise<IOrderDocument> {
-        const { error, value } = orderUpdateSchema.validate(reqBody);
+        // const { error, value } = orderUpdateSchema.validate(reqBody)
+        const res = typia.validateEquals<OrderUpdateSchema>(reqBody)
 
-        if (error?.details) {
+        // if (error?.details) {
+        //     throw new BadRequestError(
+        //         error.details[0].message,
+        //         "Update reqeustExtension() method"
+        //     )
+        // }
+        if (!res.success) {
             throw new BadRequestError(
-                error.details[0].message,
+                res.errors[0].expected,
                 "Update reqeustExtension() method"
-            );
+            )
         }
 
         const order: IOrderDocument =
-            await this.orderService.requestDeliveryExtension(orderId, value);
+            await this.orderService.requestDeliveryExtension(orderId, res.data)
 
-        return order;
+        return order
     }
 
     async updateDeliveryDate(
@@ -186,24 +185,31 @@ export class OrderHandler {
         type: string,
         reqBody: any
     ): Promise<IOrderDocument> {
-        const { error, value } = orderUpdateSchema.validate(reqBody);
+        // const { error, value } = orderUpdateSchema.validate(reqBody)
+        const res = typia.validateEquals<OrderUpdateSchema>(reqBody)
 
-        if (error?.details) {
+        // if (error?.details) {
+        //     throw new BadRequestError(
+        //         error.details[0].message,
+        //         "Update reqeustExtension() method"
+        //     )
+        // }
+        if (!res.success) {
             throw new BadRequestError(
-                error.details[0].message,
-                "Update deliveryDate() method"
-            );
+                res.errors[0].expected,
+                "Update reqeustExtension() method"
+            )
         }
 
         const order: IOrderDocument =
             type === "approve"
                 ? await this.orderService.approveExtensionDeliveryDate(
-                      orderId,
-                      value
-                  )
-                : await this.orderService.rejectExtensionDeliveryDate(orderId);
+                    orderId,
+                    res.data
+                )
+                : await this.orderService.rejectExtensionDeliveryDate(orderId)
 
-        return order;
+        return order
     }
 
     async buyerApproveOrder(
@@ -213,42 +219,42 @@ export class OrderHandler {
         const order: IOrderDocument = await this.orderService.approveOrder(
             orderId,
             reqBody
-        );
+        )
 
-        return order;
+        return order
     }
 
     async sellerDeliverOrder(
         orderId: string,
         reqBody: any
     ): Promise<IOrderDocument> {
-        let file: string = reqBody.file;
+        let file: string = reqBody.file
         const randomBytes: Buffer = await Promise.resolve(
             crypto.randomBytes(20)
-        );
-        const randomCharacters: string = randomBytes.toString("hex");
+        )
+        const randomCharacters: string = randomBytes.toString("hex")
 
         if (file) {
             if (parseInt(reqBody.fileSize) > 10485760) {
                 throw new BadRequestError(
                     "File is too large. Maximum is 10Mb",
                     "Update deliverOrder() method"
-                );
+                )
             }
 
             const result =
                 reqBody.fileType === "zip"
                     ? await uploads(file, `${randomCharacters}.zip`)
-                    : await uploads(file);
+                    : await uploads(file)
 
             if (!result?.public_id) {
                 throw new BadRequestError(
                     result?.message ?? "File upload error. Try again",
                     "Update deliverOrder() method"
-                );
+                )
             }
 
-            file = result?.secure_url;
+            file = result?.secure_url
         }
 
         const deliveredWork: IDeliveredWork = {
@@ -257,14 +263,14 @@ export class OrderHandler {
             fileType: reqBody.fileType,
             fileName: reqBody.fileName,
             fileSize: reqBody.fileSize
-        };
+        }
 
         const order: IOrderDocument = await this.orderService.deliverOrder(
             orderId,
             true,
             deliveredWork
-        );
+        )
 
-        return order;
+        return order
     }
 }

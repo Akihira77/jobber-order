@@ -2,13 +2,14 @@ import { Logger } from "winston"
 import { Context, Hono, Next } from "hono"
 import { StatusCodes } from "http-status-codes"
 import { NotAuthorizedError } from "@Akihira77/jobber-shared"
-import jwt from "jsonwebtoken"
+import { createVerifier } from "fast-jwt"
 
 import { OrderNotificationService } from "./services/orderNotification.service"
 import { OrderService } from "./services/order.service"
-import { OrderQueue } from "./queues/order.queue"
 import { OrderHandler } from "./handler/order.handler"
 import { GATEWAY_JWT_TOKEN } from "./config"
+import { OrderQueue } from "./queues/order.queue"
+import { Channel } from "amqplib"
 
 // const BASE_PATH = "/api/v1/order";
 const BASE_PATH = "/order"
@@ -16,6 +17,7 @@ const BASE_PATH = "/order"
 export function appRoutes(
     app: Hono,
     queue: OrderQueue,
+    ch: Channel,
     logger: (moduleName: string) => Logger
 ): void {
     app.get("/order-health", (c: Context) => {
@@ -23,17 +25,17 @@ export function appRoutes(
     })
 
     const notificationSvc = new OrderNotificationService(logger)
-    const orderSvc = new OrderService(queue, notificationSvc)
+    const orderSvc = new OrderService(queue, ch, notificationSvc)
     const orderHndlr = new OrderHandler(orderSvc, notificationSvc)
 
     const api = app.basePath(BASE_PATH)
 
-    // api.use(verifyGatewayRequest, authOnly)
+    api.use(verifyGatewayRequest, authOnly)
 
-    api.use(authOnly)
+    // api.use(authOnly)
     orderRoute(api, orderHndlr)
     orderNotifRoute(api, orderHndlr)
-    api.use(verifyGatewayRequest)
+    // api.use(verifyGatewayRequest)
 }
 
 function orderRoute(
@@ -226,13 +228,13 @@ async function verifyGatewayRequest(c: Context, next: Next): Promise<void> {
     }
 
     try {
-        const payload: { id: string; iat: number } = jwt.verify(
-            token,
-            GATEWAY_JWT_TOKEN!
-        ) as {
-            id: string
-            iat: number
-        }
+        const verifier = createVerifier({
+            key: `${GATEWAY_JWT_TOKEN}`,
+            cache: true,
+            cacheTTL: 24 * 60 * 60 * 1000, // 24 hours,
+            maxAge: 24 * 60 * 60 * 1000
+        })
+        const payload: { id: string; iat: number } = verifier(token)
 
         c.set("gatewayToken", payload)
         await next()

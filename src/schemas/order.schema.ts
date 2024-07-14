@@ -1,6 +1,79 @@
-import Joi, { ObjectSchema } from "joi";
+import Joi, { ObjectSchema } from "joi"
+
+type RequestExtension = {
+    originalDate: string
+    newDate: string
+    days: number
+    reason: string
+}
+
+type Offer = {
+    gigTitle: string
+    price: number
+    description: string
+    deliveryInDays: number
+    oldDeliveryDate: string
+    newDeliveryDate: string
+    accepted: boolean
+    cancelled: boolean
+}
+
+type DeliveredWork = {
+    message: string
+    file: string
+}
+
+type Events = {
+    placeOrder: string
+    requirements: string
+    orderStarted: string
+    deliverydateUpdate?: string
+    orderDelivered?: string
+    buyerReview?: string
+    sellerReview?: string
+}
+
+type BuyerOrSellerReview = {
+    rating: number
+    review: string
+}
+
+type OrderSchema = {
+    orderId?: string
+    invoiceId?: string
+    gigId: string
+    gigMainTitle: string
+    gigBasicTitle: string
+    gigBasicDescription: string
+    gigCoverImage: string
+    sellerId: string
+    sellerUsername: string
+    sellerEmail: string
+    sellerImage: string
+    buyerId: string
+    buyerUsername: string
+    buyerEmail: string
+    buyerImage: string
+    status: string
+    quantity: number
+    price: number
+    serviceFee?: number
+    requirements?: string
+    paymentIntent: string
+    requestExtension?: RequestExtension
+    offer: Offer
+    delivered?: boolean
+    approvedAt?: string
+    deliveredWork?: DeliveredWork[]
+    dateOrdered: string
+    events?: Events
+    buyerReview?: BuyerOrSellerReview
+    sellerReview?: BuyerOrSellerReview
+}
 
 const orderSchema: ObjectSchema = Joi.object().keys({
+    orderId: Joi.string().optional(),
+    invoiceId: Joi.string().optional(),
     gigId: Joi.string().required(),
     gigMainTitle: Joi.string().required(),
     gigBasicTitle: Joi.string().required(),
@@ -64,7 +137,7 @@ const orderSchema: ObjectSchema = Joi.object().keys({
         rating: Joi.number(),
         review: Joi.string()
     }).optional()
-});
+})
 
 const orderUpdateSchema: ObjectSchema = Joi.object().keys({
     originalDate: Joi.string().required(),
@@ -72,6 +145,14 @@ const orderUpdateSchema: ObjectSchema = Joi.object().keys({
     days: Joi.number().required(),
     reason: Joi.string().required(),
     deliveryDateUpdate: Joi.string().optional()
-});
+})
 
-export { orderSchema, orderUpdateSchema };
+type OrderUpdateSchema = {
+    originalDate: string
+    newDate: string
+    days: number
+    reason: string
+    deliveryDateUpdate?: string
+}
+
+export { orderSchema, OrderSchema, orderUpdateSchema, OrderUpdateSchema }

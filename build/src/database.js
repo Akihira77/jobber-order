@@ -16,14 +16,13 @@ exports.databaseConnection = void 0;
 const config_1 = require("./config");
 const mongoose_1 = __importDefault(require("mongoose"));
 const databaseConnection = () => __awaiter(void 0, void 0, void 0, function* () {
-    try {
-        const db = yield mongoose_1.default.connect(config_1.DATABASE_URL);
-        return db;
-    }
-    catch (error) {
-        console.log(error);
-        throw error;
-    }
+    const db = yield mongoose_1.default.connect(`${config_1.DATABASE_URL}`, {
+        maxConnecting: 20,
+        maxIdleTimeMS: 30 * 60 * 1000,
+        maxPoolSize: 20,
+        minPoolSize: 0
+    });
+    return db;
 });
 exports.databaseConnection = databaseConnection;
 //# sourceMappingURL=database.js.map

@@ -11,16 +11,19 @@ import {
 } from "@Akihira77/jobber-shared"
 import { exchangeNamesAndRoutingKeys, CLIENT_URL } from "@order/config"
 import { OrderModel } from "@order/models/order.model"
-import { OrderQueue } from "@order/queues/order.queue"
-import { orderSchema } from "@order/schemas/order.schema"
+import { OrderSchema } from "@order/schemas/order.schema"
 
 import { OrderNotificationService } from "./orderNotification.service"
+import typia from "typia"
+import { OrderQueue } from "../queues/order.queue"
+import { Channel } from "amqplib"
 
 export class OrderService {
     constructor(
         private queue: OrderQueue,
+        private pubCh: Channel,
         private orderNotificationService: OrderNotificationService
-    ) {}
+    ) { }
 
     async getOrderByOrderId(orderId: string): Promise<IOrderDocument> {
         try {
@@ -67,57 +70,55 @@ export class OrderService {
 
     async createOrder(data: IOrderDocument): Promise<IOrderDocument> {
         try {
-            const { error } = orderSchema.validate(data)
-
-            if (error?.details) {
+            const res = typia.validateEquals<OrderSchema>(data)
+            if (!res.success) {
                 throw new BadRequestError(
-                    error.details[0].message,
+                    res.errors[0].expected,
                     "createOrder() method"
                 )
             }
 
             const orderData: IOrderDocument = await OrderModel.create(data)
-            const messageDetails: IOrderMessage = {
-                sellerId: data.sellerId,
-                ongoingJobs: 1,
-                type: "create-order"
-            }
-            const emailMessageDetails: IOrderMessage & {
-                sellerEmail: string
-                buyerEmail: string
-            } = {
-                orderId: data.orderId,
-                invoiceId: data.invoiceId,
-                orderDue: `${data.offer.newDeliveryDate}`,
-                amount: `${data.price}`,
-                buyerUsername: lowerCase(data.buyerUsername),
-                buyerEmail: data.buyerEmail,
-                sellerEmail: data.sellerEmail,
-                sellerUsername: lowerCase(data.sellerUsername),
-                title: data.offer.gigTitle,
-                description: data.offer.description,
-                requirements: data.requirements,
-                serviceFee: `${orderData.serviceFee}`,
-                total: `${orderData.price + orderData.serviceFee!}`,
-                orderUrl: `${CLIENT_URL}/orders/${data.orderId}/activities`,
-                template: "orderPlaced"
-            }
-            const { usersService, notificationService } =
-                exchangeNamesAndRoutingKeys
+            // const emailMessageDetails: IOrderMessage & {
+            //     sellerEmail: string
+            //     buyerEmail: string
+            // } = {
+            //     orderId: data.orderId,
+            //     invoiceId: data.invoiceId,
+            //     orderDue: `${data.offer.newDeliveryDate}`,
+            //     amount: `${data.price}`,
+            //     buyerUsername: lowerCase(data.buyerUsername),
+            //     buyerEmail: data.buyerEmail,
+            //     sellerEmail: data.sellerEmail,
+            //     sellerUsername: lowerCase(data.sellerUsername),
+            //     title: data.offer.gigTitle,
+            //     description: data.offer.description,
+            //     requirements: data.requirements,
+            //     serviceFee: `${orderData.serviceFee}`,
+            //     total: `${orderData.price + orderData.serviceFee!}`,
+            //     orderUrl: `${CLIENT_URL}/orders/${data.orderId}/activities`,
+            //     template: "orderPlaced"
+            // }
+            const { usersService } = exchangeNamesAndRoutingKeys
 
             this.queue.publishDirectMessage(
+                this.pubCh,
                 usersService.seller.exchangeName,
                 usersService.seller.routingKey,
-                JSON.stringify(messageDetails),
+                typia.json.stringify({
+                    sellerId: data.sellerId,
+                    ongoingJobs: 1,
+                    type: "create-order"
+                }),
                 "Details sent to users service"
             )
 
-            this.queue.publishDirectMessage(
-                notificationService.order.exchangeName,
-                notificationService.order.routingKey,
-                JSON.stringify(emailMessageDetails),
-                "Order email sent to notification service"
-            )
+            // this.queue.publishDirectMessage(
+            //     notificationService.order.exchangeName,
+            //     notificationService.order.routingKey,
+            //     JSON.stringify(emailMessageDetails),
+            //     "Order email sent to notification service"
+            // )
 
             this.orderNotificationService.sendNotification(
                 orderData,
@@ -163,6 +164,7 @@ export class OrderService {
 
             // update seller info
             this.queue.publishDirectMessage(
+                this.pubCh,
                 usersService.seller.exchangeName,
                 usersService.seller.routingKey,
                 JSON.stringify({
@@ -174,6 +176,7 @@ export class OrderService {
 
             // update buyer info
             this.queue.publishDirectMessage(
+                this.pubCh,
                 usersService.buyer.exchangeName,
                 usersService.buyer.routingKey,
                 JSON.stringify({
@@ -237,6 +240,7 @@ export class OrderService {
 
             // update seller info
             this.queue.publishDirectMessage(
+                this.pubCh,
                 usersService.seller.exchangeName,
                 usersService.seller.routingKey,
                 JSON.stringify(messageDetails),
@@ -245,6 +249,7 @@ export class OrderService {
 
             // update buyer info
             this.queue.publishDirectMessage(
+                this.pubCh,
                 usersService.buyer.exchangeName,
                 usersService.buyer.routingKey,
                 JSON.stringify({
@@ -313,6 +318,7 @@ export class OrderService {
 
             // sent email
             this.queue.publishDirectMessage(
+                this.pubCh,
                 notificationService.order.exchangeName,
                 notificationService.order.routingKey,
                 JSON.stringify(messageDetails),
@@ -376,6 +382,7 @@ export class OrderService {
 
             // sent email
             this.queue.publishDirectMessage(
+                this.pubCh,
                 notificationService.order.exchangeName,
                 notificationService.order.routingKey,
                 JSON.stringify(messageDetails),
@@ -448,6 +455,7 @@ export class OrderService {
 
             // sent email
             this.queue.publishDirectMessage(
+                this.pubCh,
                 notificationService.order.exchangeName,
                 notificationService.order.routingKey,
                 JSON.stringify(messageDetails),
@@ -512,6 +520,7 @@ export class OrderService {
 
             // sent email
             this.queue.publishDirectMessage(
+                this.pubCh,
                 notificationService.order.exchangeName,
                 notificationService.order.routingKey,
                 JSON.stringify(messageDetails),
@@ -552,33 +561,33 @@ export class OrderService {
                     $set:
                         data.type === "buyer-review"
                             ? {
-                                  buyerReview: {
-                                      rating: data.rating,
-                                      review: data.review,
-                                      created: data.createdAt
-                                          ? new Date(data.createdAt)
-                                          : new Date()
-                                  },
-                                  events: {
-                                      buyerReview: data.createdAt
-                                          ? new Date(data.createdAt)
-                                          : new Date()
-                                  }
-                              }
+                                buyerReview: {
+                                    rating: data.rating,
+                                    review: data.review,
+                                    created: data.createdAt
+                                        ? new Date(data.createdAt)
+                                        : new Date()
+                                },
+                                events: {
+                                    buyerReview: data.createdAt
+                                        ? new Date(data.createdAt)
+                                        : new Date()
+                                }
+                            }
                             : {
-                                  sellerReview: {
-                                      rating: data.rating,
-                                      review: data.review,
-                                      created: data.createdAt
-                                          ? new Date(data.createdAt)
-                                          : new Date()
-                                  },
-                                  events: {
-                                      sellerReview: data.createdAt
-                                          ? new Date(data.createdAt)
-                                          : new Date()
-                                  }
-                              }
+                                sellerReview: {
+                                    rating: data.rating,
+                                    review: data.review,
+                                    created: data.createdAt
+                                        ? new Date(data.createdAt)
+                                        : new Date()
+                                },
+                                events: {
+                                    sellerReview: data.createdAt
+                                        ? new Date(data.createdAt)
+                                        : new Date()
+                                }
+                            }
                 },
                 { new: true }
             ).exec()

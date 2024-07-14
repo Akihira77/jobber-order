@@ -78,8 +78,10 @@ describe("Create method", () => {
     beforeAll(async () => {
         await databaseConnection()
         orderNotificationService = new OrderNotificationService(logger)
-        const queue = new OrderQueue(null, logger)
-        orderService = new OrderService(queue, orderNotificationService)
+        const queue = new OrderQueue(logger)
+        const conn = await queue.createConnection()
+        const ch = await conn.createChannel()
+        orderService = new OrderService(queue, ch, orderNotificationService)
     })
 
     afterAll(async () => {

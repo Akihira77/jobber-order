@@ -8,35 +8,31 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.appRoutes = void 0;
+exports.appRoutes = appRoutes;
 const http_status_codes_1 = require("http-status-codes");
 const jobber_shared_1 = require("@Akihira77/jobber-shared");
-const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
+const fast_jwt_1 = require("fast-jwt");
 const orderNotification_service_1 = require("./services/orderNotification.service");
 const order_service_1 = require("./services/order.service");
 const order_handler_1 = require("./handler/order.handler");
 const config_1 = require("./config");
 // const BASE_PATH = "/api/v1/order";
 const BASE_PATH = "/order";
-function appRoutes(app, queue, logger) {
+function appRoutes(app, queue, ch, logger) {
     app.get("/order-health", (c) => {
         return c.text("Order service is healthy and OK.", http_status_codes_1.StatusCodes.OK);
     });
     const notificationSvc = new orderNotification_service_1.OrderNotificationService(logger);
-    const orderSvc = new order_service_1.OrderService(queue, notificationSvc);
+    const orderSvc = new order_service_1.OrderService(queue, ch, notificationSvc);
     const orderHndlr = new order_handler_1.OrderHandler(orderSvc, notificationSvc);
     const api = app.basePath(BASE_PATH);
-    // api.use(verifyGatewayRequest, authOnly)
-    api.use(authOnly);
+    api.use(verifyGatewayRequest, authOnly);
+    // api.use(authOnly)
     orderRoute(api, orderHndlr);
     orderNotifRoute(api, orderHndlr);
-    api.use(verifyGatewayRequest);
+    // api.use(verifyGatewayRequest)
 }
-exports.appRoutes = appRoutes;
 function orderRoute(api, orderHndlr) {
     api.get("/:orderId", (c) => __awaiter(this, void 0, void 0, function* () {
         const orderId = c.req.param("orderId");
@@ -140,7 +136,13 @@ function verifyGatewayRequest(c, next) {
             throw new jobber_shared_1.NotAuthorizedError("Invalid request", "verifyGatewayRequest() method: Request not coming from api gateway");
         }
         try {
-            const payload = jsonwebtoken_1.default.verify(token, config_1.GATEWAY_JWT_TOKEN);
+            const verifier = (0, fast_jwt_1.createVerifier)({
+                key: `${config_1.GATEWAY_JWT_TOKEN}`,
+                cache: true,
+                cacheTTL: 24 * 60 * 60 * 1000, // 24 hours,
+                maxAge: 24 * 60 * 60 * 1000
+            });
+            const payload = verifier(token);
             c.set("gatewayToken", payload);
             yield next();
         }

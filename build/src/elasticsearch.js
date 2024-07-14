@@ -16,7 +16,8 @@ class ElasticSearchClient {
     constructor(logger) {
         this.logger = logger;
         this.client = new elasticsearch_1.Client({
-            node: config_1.ELASTIC_SEARCH_URL
+            node: `${config_1.ELASTIC_SEARCH_URL}`,
+            Connection: elasticsearch_1.HttpConnection
         });
     }
     checkConnection() {

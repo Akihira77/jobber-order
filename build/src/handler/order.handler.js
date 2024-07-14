@@ -16,8 +16,8 @@ exports.OrderHandler = void 0;
 const crypto_1 = __importDefault(require("crypto"));
 const jobber_shared_1 = require("@Akihira77/jobber-shared");
 const config_1 = require("../config");
-const order_schema_1 = require("../schemas/order.schema");
 const stripe_1 = __importDefault(require("stripe"));
+const typia_1 = __importDefault(require("typia"));
 class OrderHandler {
     constructor(orderService, orderNotificationService) {
         this.orderService = orderService;
@@ -39,8 +39,8 @@ class OrderHandler {
         });
     }
     createOrderIntent(currUser, reqBody) {
-        var _a;
         return __awaiter(this, void 0, void 0, function* () {
+            var _a;
             const customer = yield this.stripe.customers.search({
                 query: `email:"${currUser.email}"`
             });
@@ -76,20 +76,16 @@ class OrderHandler {
     }
     createOrder(reqBody) {
         return __awaiter(this, void 0, void 0, function* () {
-            const { error, value } = order_schema_1.orderSchema.validate(reqBody);
-            if (error === null || error === void 0 ? void 0 : error.details) {
-                throw new jobber_shared_1.BadRequestError(error.details[0].message, "Create order() method");
-            }
             const generateRandomNumber = (length) => {
                 return (Math.floor(Math.random() * (9 * Math.pow(10, length - 1))) +
                     Math.pow(10, length - 1));
             };
             // the service charge is 5.5% of the purchased amount
             // for purchases under 50$, an additional $2 is applied
-            const serviceFee = value.price < 50
-                ? (5.5 / 100) * value.price + 2
-                : (5.5 / 100) * value.price;
-            const orderData = Object.assign(Object.assign({}, value), { orderId: `JO${generateRandomNumber(11)}`, invoiceId: `JI${generateRandomNumber(11)}`, serviceFee: serviceFee });
+            const serviceFee = reqBody.price < 50
+                ? (5.5 / 100) * reqBody.price + 2
+                : (5.5 / 100) * reqBody.price;
+            const orderData = Object.assign(Object.assign({}, reqBody), { orderId: `JO${generateRandomNumber(11)}`, invoiceId: `JI${generateRandomNumber(11)}`, serviceFee: serviceFee });
             const order = yield this.orderService.createOrder(orderData);
             return order;
         });
@@ -123,22 +119,168 @@ class OrderHandler {
     }
     sellerRequestExtension(orderId, reqBody) {
         return __awaiter(this, void 0, void 0, function* () {
-            const { error, value } = order_schema_1.orderUpdateSchema.validate(reqBody);
-            if (error === null || error === void 0 ? void 0 : error.details) {
-                throw new jobber_shared_1.BadRequestError(error.details[0].message, "Update reqeustExtension() method");
+            // const { error, value } = orderUpdateSchema.validate(reqBody)
+            const res = (input => {
+                const errors = [];
+                const __is = (input, _exceptionable = true) => {
+                    const $io0 = (input, _exceptionable = true) => "string" === typeof input.originalDate && "string" === typeof input.newDate && "number" === typeof input.days && "string" === typeof input.reason && (undefined === input.deliveryDateUpdate || "string" === typeof input.deliveryDateUpdate) && (4 === Object.keys(input).length || Object.keys(input).every(key => {
+                        if (["originalDate", "newDate", "days", "reason", "deliveryDateUpdate"].some(prop => key === prop))
+                            return true;
+                        const value = input[key];
+                        if (undefined === value)
+                            return true;
+                        return false;
+                    }));
+                    return "object" === typeof input && null !== input && $io0(input, true);
+                };
+                if (false === __is(input)) {
+                    const $report = typia_1.default.validateEquals.report(errors);
+                    ((input, _path, _exceptionable = true) => {
+                        const $join = typia_1.default.validateEquals.join;
+                        const $vo0 = (input, _path, _exceptionable = true) => ["string" === typeof input.originalDate || $report(_exceptionable, {
+                                path: _path + ".originalDate",
+                                expected: "string",
+                                value: input.originalDate
+                            }), "string" === typeof input.newDate || $report(_exceptionable, {
+                                path: _path + ".newDate",
+                                expected: "string",
+                                value: input.newDate
+                            }), "number" === typeof input.days || $report(_exceptionable, {
+                                path: _path + ".days",
+                                expected: "number",
+                                value: input.days
+                            }), "string" === typeof input.reason || $report(_exceptionable, {
+                                path: _path + ".reason",
+                                expected: "string",
+                                value: input.reason
+                            }), undefined === input.deliveryDateUpdate || "string" === typeof input.deliveryDateUpdate || $report(_exceptionable, {
+                                path: _path + ".deliveryDateUpdate",
+                                expected: "(string | undefined)",
+                                value: input.deliveryDateUpdate
+                            }), 4 === Object.keys(input).length || (false === _exceptionable || Object.keys(input).map(key => {
+                                if (["originalDate", "newDate", "days", "reason", "deliveryDateUpdate"].some(prop => key === prop))
+                                    return true;
+                                const value = input[key];
+                                if (undefined === value)
+                                    return true;
+                                return $report(_exceptionable, {
+                                    path: _path + $join(key),
+                                    expected: "undefined",
+                                    value: value
+                                });
+                            }).every(flag => flag))].every(flag => flag);
+                        return ("object" === typeof input && null !== input || $report(true, {
+                            path: _path + "",
+                            expected: "OrderUpdateSchema",
+                            value: input
+                        })) && $vo0(input, _path + "", true) || $report(true, {
+                            path: _path + "",
+                            expected: "OrderUpdateSchema",
+                            value: input
+                        });
+                    })(input, "$input", true);
+                }
+                const success = 0 === errors.length;
+                return {
+                    success,
+                    errors,
+                    data: success ? input : undefined
+                };
+            })(reqBody);
+            // if (error?.details) {
+            //     throw new BadRequestError(
+            //         error.details[0].message,
+            //         "Update reqeustExtension() method"
+            //     )
+            // }
+            if (!res.success) {
+                throw new jobber_shared_1.BadRequestError(res.errors[0].expected, "Update reqeustExtension() method");
             }
-            const order = yield this.orderService.requestDeliveryExtension(orderId, value);
+            const order = yield this.orderService.requestDeliveryExtension(orderId, res.data);
             return order;
         });
     }
     updateDeliveryDate(orderId, type, reqBody) {
         return __awaiter(this, void 0, void 0, function* () {
-            const { error, value } = order_schema_1.orderUpdateSchema.validate(reqBody);
-            if (error === null || error === void 0 ? void 0 : error.details) {
-                throw new jobber_shared_1.BadRequestError(error.details[0].message, "Update deliveryDate() method");
+            // const { error, value } = orderUpdateSchema.validate(reqBody)
+            const res = (input => {
+                const errors = [];
+                const __is = (input, _exceptionable = true) => {
+                    const $io0 = (input, _exceptionable = true) => "string" === typeof input.originalDate && "string" === typeof input.newDate && "number" === typeof input.days && "string" === typeof input.reason && (undefined === input.deliveryDateUpdate || "string" === typeof input.deliveryDateUpdate) && (4 === Object.keys(input).length || Object.keys(input).every(key => {
+                        if (["originalDate", "newDate", "days", "reason", "deliveryDateUpdate"].some(prop => key === prop))
+                            return true;
+                        const value = input[key];
+                        if (undefined === value)
+                            return true;
+                        return false;
+                    }));
+                    return "object" === typeof input && null !== input && $io0(input, true);
+                };
+                if (false === __is(input)) {
+                    const $report = typia_1.default.validateEquals.report(errors);
+                    ((input, _path, _exceptionable = true) => {
+                        const $join = typia_1.default.validateEquals.join;
+                        const $vo0 = (input, _path, _exceptionable = true) => ["string" === typeof input.originalDate || $report(_exceptionable, {
+                                path: _path + ".originalDate",
+                                expected: "string",
+                                value: input.originalDate
+                            }), "string" === typeof input.newDate || $report(_exceptionable, {
+                                path: _path + ".newDate",
+                                expected: "string",
+                                value: input.newDate
+                            }), "number" === typeof input.days || $report(_exceptionable, {
+                                path: _path + ".days",
+                                expected: "number",
+                                value: input.days
+                            }), "string" === typeof input.reason || $report(_exceptionable, {
+                                path: _path + ".reason",
+                                expected: "string",
+                                value: input.reason
+                            }), undefined === input.deliveryDateUpdate || "string" === typeof input.deliveryDateUpdate || $report(_exceptionable, {
+                                path: _path + ".deliveryDateUpdate",
+                                expected: "(string | undefined)",
+                                value: input.deliveryDateUpdate
+                            }), 4 === Object.keys(input).length || (false === _exceptionable || Object.keys(input).map(key => {
+                                if (["originalDate", "newDate", "days", "reason", "deliveryDateUpdate"].some(prop => key === prop))
+                                    return true;
+                                const value = input[key];
+                                if (undefined === value)
+                                    return true;
+                                return $report(_exceptionable, {
+                                    path: _path + $join(key),
+                                    expected: "undefined",
+                                    value: value
+                                });
+                            }).every(flag => flag))].every(flag => flag);
+                        return ("object" === typeof input && null !== input || $report(true, {
+                            path: _path + "",
+                            expected: "OrderUpdateSchema",
+                            value: input
+                        })) && $vo0(input, _path + "", true) || $report(true, {
+                            path: _path + "",
+                            expected: "OrderUpdateSchema",
+                            value: input
+                        });
+                    })(input, "$input", true);
+                }
+                const success = 0 === errors.length;
+                return {
+                    success,
+                    errors,
+                    data: success ? input : undefined
+                };
+            })(reqBody);
+            // if (error?.details) {
+            //     throw new BadRequestError(
+            //         error.details[0].message,
+            //         "Update reqeustExtension() method"
+            //     )
+            // }
+            if (!res.success) {
+                throw new jobber_shared_1.BadRequestError(res.errors[0].expected, "Update reqeustExtension() method");
             }
             const order = type === "approve"
-                ? yield this.orderService.approveExtensionDeliveryDate(orderId, value)
+                ? yield this.orderService.approveExtensionDeliveryDate(orderId, res.data)
                 : yield this.orderService.rejectExtensionDeliveryDate(orderId);
             return order;
         });
@@ -150,8 +292,8 @@ class OrderHandler {
         });
     }
     sellerDeliverOrder(orderId, reqBody) {
-        var _a;
         return __awaiter(this, void 0, void 0, function* () {
+            var _a;
             let file = reqBody.file;
             const randomBytes = yield Promise.resolve(crypto_1.default.randomBytes(20));
             const randomCharacters = randomBytes.toString("hex");

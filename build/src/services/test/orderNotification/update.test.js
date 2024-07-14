@@ -16,8 +16,8 @@ const jobber_shared_1 = require("@Akihira77/jobber-shared");
 const config_1 = require("../../../config");
 const database_1 = require("../../../database");
 const order_queue_1 = require("../../../queues/order.queue");
-const order_service_1 = require("../../../services/order.service");
-const orderNotification_service_1 = require("../../../services/orderNotification.service");
+const order_service_1 = require("../../order.service");
+const orderNotification_service_1 = require("../../orderNotification.service");
 const cloudinary_1 = __importDefault(require("cloudinary"));
 const offer = {
     gigTitle: "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor i",
@@ -70,9 +70,11 @@ let orderService;
 describe("Update method", () => {
     beforeAll(() => __awaiter(void 0, void 0, void 0, function* () {
         yield (0, database_1.databaseConnection)();
-        const queue = new order_queue_1.OrderQueue(null, logger);
+        const queue = new order_queue_1.OrderQueue(logger);
+        const conn = yield queue.createConnection();
+        const ch = yield conn.createChannel();
         orderNotificationService = new orderNotification_service_1.OrderNotificationService(logger);
-        orderService = new order_service_1.OrderService(queue, orderNotificationService);
+        orderService = new order_service_1.OrderService(queue, ch, orderNotificationService);
         yield orderService.createOrder(data);
     }));
     afterAll(() => __awaiter(void 0, void 0, void 0, function* () {

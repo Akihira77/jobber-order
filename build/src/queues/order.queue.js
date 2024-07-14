@@ -17,20 +17,19 @@ const config_1 = require("../config");
 const orderNotification_service_1 = require("../services/orderNotification.service");
 const order_service_1 = require("../services/order.service");
 const amqplib_1 = __importDefault(require("amqplib"));
+const typia_1 = __importDefault(require("typia"));
+const server_1 = require("../server");
 class OrderQueue {
-    constructor(ch, logger) {
-        this.ch = ch;
+    constructor(logger) {
         this.logger = logger;
     }
     createConnection() {
         return __awaiter(this, void 0, void 0, function* () {
             try {
                 const connection = yield amqplib_1.default.connect(`${config_1.RABBITMQ_ENDPOINT}`);
-                this.ch = yield connection.createChannel();
-                // console.log("Order server connected to queue successfully...");
                 this.logger("queues/connection.ts - createConnection()").info("OrderService connected to RabbitMQ successfully...");
-                this.closeConnection(this.ch, connection);
-                return this.ch;
+                this.closeConnection(connection);
+                return connection;
             }
             catch (error) {
                 this.logger("queues/connection.ts - createConnection()").error("OrderService createConnection() method error:", error);
@@ -38,49 +37,51 @@ class OrderQueue {
             }
         });
     }
-    publishDirectMessage(exchangeName, routingKey, message, logMessage) {
+    publishDirectMessage(ch, exchangeName, routingKey, message, logMessage) {
         return __awaiter(this, void 0, void 0, function* () {
             try {
-                if (!this.ch) {
-                    this.ch = yield this.createConnection();
-                }
-                yield this.ch.assertExchange(exchangeName, "direct");
-                this.ch.publish(exchangeName, routingKey, Buffer.from(message));
-                this.logger("queues/order.producer.ts - publishDireectMessage()").info(logMessage);
+                yield ch.assertExchange(exchangeName, "direct");
+                ch.publish(exchangeName, routingKey, Buffer.from(message));
+                // this.logger(
+                //     "queues/order.producer.ts - publishDirectMessage()"
+                // ).info(logMessage)
+                console.log(logMessage);
             }
             catch (error) {
-                this.logger("queues/order.producer.ts - publishDireectMessage()").error("OrderService QueueProducer publishDirectMessage() method error:", error);
+                this.logger("queues/order.producer.ts - publishDirectMessage()").error("OrderService QueueProducer publishDirectMessage() method error:", error);
             }
         });
     }
-    consumeReviewFanoutMessage() {
+    consumeReviewFanoutMessage(ch) {
         return __awaiter(this, void 0, void 0, function* () {
             try {
-                if (!this.ch) {
-                    this.ch = yield this.createConnection();
-                }
                 const { reviewService } = config_1.exchangeNamesAndRoutingKeys;
                 const queueName = "order-review-queue";
-                yield this.ch.assertExchange(reviewService.review.exchangeName, "fanout");
-                const jobberQueue = yield this.ch.assertQueue(queueName, {
+                yield ch.assertExchange(reviewService.review.exchangeName, "fanout");
+                const jobberQueue = yield ch.assertQueue(queueName, {
                     durable: true,
                     autoDelete: false
                 });
-                yield this.ch.bindQueue(jobberQueue.queue, reviewService.review.exchangeName, "");
-                yield this.ch.consume(jobberQueue.queue, (msg) => __awaiter(this, void 0, void 0, function* () {
+                yield ch.bindQueue(jobberQueue.queue, reviewService.review.exchangeName, "");
+                yield ch.consume(jobberQueue.queue, (msg) => __awaiter(this, void 0, void 0, function* () {
                     try {
-                        const { type } = JSON.parse(msg.content.toString());
+                        const { type } = (input => { const is = input => {
+                            return true;
+                        }; input = JSON.parse(input); return is(input) ? input : null; })(msg.content.toString());
                         if (type === "addReview") {
-                            const { gigReview } = JSON.parse(msg.content.toString());
+                            const { gigReview } = (input => { const is = input => {
+                                return true;
+                            }; input = JSON.parse(input); return is(input) ? input : null; })(msg.content.toString());
                             const notificationSvc = new orderNotification_service_1.OrderNotificationService(this.logger);
-                            const orderSvc = new order_service_1.OrderService(this, notificationSvc);
+                            const orderSvc = new order_service_1.OrderService(server_1.pubMQOrderObject, ch, notificationSvc);
                             yield orderSvc.updateOrderReview(gigReview);
-                            this.ch.ack(msg);
+                            ch.ack(msg);
+                            return;
                         }
-                        this.ch.reject(msg, false);
+                        ch.reject(msg, false);
                     }
                     catch (error) {
-                        this.ch.reject(msg, false);
+                        ch.reject(msg, false);
                         this.logger("queues/order.queue.ts - consumeReviewFanoutMessage()").error("consuming message got errors. consumeReviewFanoutMessage()", error);
                     }
                 }));
@@ -90,9 +91,8 @@ class OrderQueue {
             }
         });
     }
-    closeConnection(channel, connection) {
+    closeConnection(connection) {
         process.once("SIGINT", () => __awaiter(this, void 0, void 0, function* () {
-            yield channel.close();
             yield connection.close();
         }));
     }
