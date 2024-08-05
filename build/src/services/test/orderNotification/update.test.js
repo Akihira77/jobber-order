@@ -19,6 +19,7 @@ const order_queue_1 = require("../../../queues/order.queue");
 const order_service_1 = require("../../order.service");
 const orderNotification_service_1 = require("../../orderNotification.service");
 const cloudinary_1 = __importDefault(require("cloudinary"));
+const server_1 = require("../../../server");
 const offer = {
     gigTitle: "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor i",
     price: 300,
@@ -70,10 +71,11 @@ let orderService;
 describe("Update method", () => {
     beforeAll(() => __awaiter(void 0, void 0, void 0, function* () {
         yield (0, database_1.databaseConnection)();
-        const queue = new order_queue_1.OrderQueue(logger);
+        const socket = yield (0, server_1.createSocketIO)(logger);
+        const queue = new order_queue_1.OrderQueue(socket, logger);
         const conn = yield queue.createConnection();
         const ch = yield conn.createChannel();
-        orderNotificationService = new orderNotification_service_1.OrderNotificationService(logger);
+        orderNotificationService = new orderNotification_service_1.OrderNotificationService(socket, logger);
         orderService = new order_service_1.OrderService(queue, ch, orderNotificationService);
         yield orderService.createOrder(data);
     }));

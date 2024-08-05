@@ -50,7 +50,7 @@ const main = () => __awaiter(void 0, void 0, void 0, function* () {
 });
 if (config_1.NODE_ENV === "production") {
     let numCPUs = Math.floor(node_os_1.default.availableParallelism() / 2);
-    numCPUs = 3;
+    numCPUs = 4;
     if (node_cluster_1.default.isPrimary) {
         for (let i = 0; i < numCPUs; i++) {
             node_cluster_1.default.fork();

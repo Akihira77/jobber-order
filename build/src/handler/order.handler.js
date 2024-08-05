@@ -76,18 +76,50 @@ class OrderHandler {
     }
     createOrder(reqBody) {
         return __awaiter(this, void 0, void 0, function* () {
-            const generateRandomNumber = (length) => {
-                return (Math.floor(Math.random() * (9 * Math.pow(10, length - 1))) +
-                    Math.pow(10, length - 1));
-            };
-            // the service charge is 5.5% of the purchased amount
-            // for purchases under 50$, an additional $2 is applied
-            const serviceFee = reqBody.price < 50
-                ? (5.5 / 100) * reqBody.price + 2
-                : (5.5 / 100) * reqBody.price;
-            const orderData = Object.assign(Object.assign({}, reqBody), { orderId: `JO${generateRandomNumber(11)}`, invoiceId: `JI${generateRandomNumber(11)}`, serviceFee: serviceFee });
-            const order = yield this.orderService.createOrder(orderData);
-            return order;
+            var _a, _b;
+            try {
+                const generateRandomNumber = (length) => {
+                    return (Math.floor(Math.random() * (9 * Math.pow(10, length - 1))) +
+                        Math.pow(10, length - 1));
+                };
+                // the service charge is 5.5% of the purchased amount
+                // for purchases under 50$, an additional $2 is applied
+                const serviceFee = reqBody.price < 50
+                    ? (5.5 / 100) * reqBody.price + 2
+                    : (5.5 / 100) * reqBody.price;
+                const orderData = {
+                    price: reqBody.price,
+                    gigId: reqBody.gigId,
+                    offer: reqBody.offer,
+                    buyerId: reqBody.buyerId,
+                    quantity: reqBody.quantity,
+                    sellerId: reqBody.sellerId,
+                    status: reqBody.status,
+                    events: reqBody.events,
+                    buyerEmail: reqBody.buyerEmail,
+                    buyerImage: reqBody.buyerImage,
+                    sellerEmail: reqBody.sellerEmail,
+                    sellerImage: reqBody.sellerImage,
+                    gigMainTitle: reqBody.gigMainTitle,
+                    buyerUsername: reqBody.buyerUsername,
+                    gigBasicTitle: reqBody.gigBasicTitle,
+                    gigCoverImage: reqBody.gigCoverImage,
+                    sellerUsername: reqBody.sellerUsername,
+                    gigBasicDescription: reqBody.gigBasicDescription,
+                    requirements: (_a = reqBody === null || reqBody === void 0 ? void 0 : reqBody.requirements) !== null && _a !== void 0 ? _a : "",
+                    paymentIntent: (_b = reqBody === null || reqBody === void 0 ? void 0 : reqBody.paymentIntent) !== null && _b !== void 0 ? _b : "",
+                    orderId: `JO${generateRandomNumber(11)}`,
+                    invoiceId: `JI${generateRandomNumber(11)}`,
+                    serviceFee: serviceFee,
+                    dateOrdered: reqBody.dateOrdered
+                };
+                const order = yield this.orderService.createOrder(orderData);
+                return order;
+            }
+            catch (error) {
+                console.log(error);
+                throw error;
+            }
         });
     }
     getOrderbyOrderId(orderId) {

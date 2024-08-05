@@ -7,12 +7,15 @@ import {
 } from "@Akihira77/jobber-shared"
 import { OrderModel } from "@order/models/order.model"
 import { OrderNotificationModel } from "@order/models/orderNotification.model"
-import { socketIOOrderObject } from "@order/server"
 import { isValidObjectId } from "mongoose"
+import { Server } from "socket.io"
 import { Logger } from "winston"
 
 export class OrderNotificationService {
-    constructor(private logger: (moduleName: string) => Logger) {}
+    constructor(
+        private readonly socket: Server,
+        private logger: (moduleName: string) => Logger
+    ) {}
 
     async createNotification(
         request: IOrderNotifcation
@@ -88,7 +91,7 @@ export class OrderNotificationService {
                 .lean()
                 .exec()
 
-            socketIOOrderObject?.emit("order_notification", order)
+            this.socket.emit("order_notification", order)
             return notification
         } catch (error) {
             console.log(error)
@@ -120,11 +123,7 @@ export class OrderNotificationService {
             const orderNotification =
                 await this.createNotification(notificationData)
 
-            socketIOOrderObject?.emit(
-                "order_notification",
-                request,
-                orderNotification
-            )
+            this.socket.emit("order_notification", request, orderNotification)
         } catch (error) {
             console.log(error)
             throw new Error("Unexpected error occured. Please try again.")

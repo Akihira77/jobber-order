@@ -15,6 +15,7 @@ const database_1 = require("../../../database");
 const order_queue_1 = require("../../../queues/order.queue");
 const order_service_1 = require("../../order.service");
 const orderNotification_service_1 = require("../../orderNotification.service");
+const server_1 = require("../../../server");
 const logger = (moduleName) => (0, jobber_shared_1.winstonLogger)(`${config_1.ELASTIC_SEARCH_URL}`, moduleName !== null && moduleName !== void 0 ? moduleName : "Order Service", "debug");
 const offer = {
     gigTitle: "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor i",
@@ -61,8 +62,9 @@ describe("Create method", () => {
     let orderService;
     beforeAll(() => __awaiter(void 0, void 0, void 0, function* () {
         yield (0, database_1.databaseConnection)();
-        orderNotificationService = new orderNotification_service_1.OrderNotificationService(logger);
-        const queue = new order_queue_1.OrderQueue(logger);
+        const socket = yield (0, server_1.createSocketIO)(logger);
+        orderNotificationService = new orderNotification_service_1.OrderNotificationService(socket, logger);
+        const queue = new order_queue_1.OrderQueue(socket, logger);
         const conn = yield queue.createConnection();
         const ch = yield conn.createChannel();
         orderService = new order_service_1.OrderService(queue, ch, orderNotificationService);

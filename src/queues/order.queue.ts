@@ -5,9 +5,13 @@ import client, { Channel, Connection, ConsumeMessage } from "amqplib"
 import { Logger } from "winston"
 import typia from "typia"
 import { pubMQOrderObject } from "../server"
+import { Server } from "socket.io"
 
 export class OrderQueue {
-    constructor(private logger: (moduleName: string) => Logger) {}
+    constructor(
+        private readonly socket: Server,
+        private logger: (moduleName: string) => Logger
+    ) {}
 
     async createConnection(): Promise<Connection> {
         try {
@@ -38,8 +42,6 @@ export class OrderQueue {
         logMessage: string
     ): Promise<void> {
         try {
-            await ch.assertExchange(exchangeName, "direct")
-
             ch.publish(exchangeName, routingKey, Buffer.from(message))
             // this.logger(
             //     "queues/order.producer.ts - publishDirectMessage()"
@@ -85,7 +87,10 @@ export class OrderQueue {
                                 msg!.content.toString()
                             )
                             const notificationSvc =
-                                new OrderNotificationService(this.logger)
+                                new OrderNotificationService(
+                                    this.socket,
+                                    this.logger
+                                )
                             const orderSvc = new OrderService(
                                 pubMQOrderObject,
                                 ch,

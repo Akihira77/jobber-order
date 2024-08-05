@@ -98,29 +98,54 @@ export class OrderHandler {
     }
 
     async createOrder(reqBody: any): Promise<IOrderDocument> {
-        const generateRandomNumber = (length: number): number => {
-            return (
-                Math.floor(Math.random() * (9 * Math.pow(10, length - 1))) +
-                Math.pow(10, length - 1)
-            )
-        }
+        try {
+            const generateRandomNumber = (length: number): number => {
+                return (
+                    Math.floor(Math.random() * (9 * Math.pow(10, length - 1))) +
+                    Math.pow(10, length - 1)
+                )
+            }
 
-        // the service charge is 5.5% of the purchased amount
-        // for purchases under 50$, an additional $2 is applied
-        const serviceFee: number =
-            reqBody.price < 50
-                ? (5.5 / 100) * reqBody.price + 2
-                : (5.5 / 100) * reqBody.price
-        const orderData: IOrderDocument = {
-            ...reqBody,
-            orderId: `JO${generateRandomNumber(11)}`,
-            invoiceId: `JI${generateRandomNumber(11)}`,
-            serviceFee: serviceFee
-        }
-        const order: IOrderDocument =
-            await this.orderService.createOrder(orderData)
+            // the service charge is 5.5% of the purchased amount
+            // for purchases under 50$, an additional $2 is applied
+            const serviceFee: number =
+                reqBody.price < 50
+                    ? (5.5 / 100) * reqBody.price + 2
+                    : (5.5 / 100) * reqBody.price
+            const orderData: IOrderDocument = {
+                price: reqBody.price,
+                gigId: reqBody.gigId,
+                offer: reqBody.offer,
+                buyerId: reqBody.buyerId,
+                quantity: reqBody.quantity,
+                sellerId: reqBody.sellerId,
+                status: reqBody.status,
+                events: reqBody.events,
+                buyerEmail: reqBody.buyerEmail,
+                buyerImage: reqBody.buyerImage,
+                sellerEmail: reqBody.sellerEmail,
+                sellerImage: reqBody.sellerImage,
+                gigMainTitle: reqBody.gigMainTitle,
+                buyerUsername: reqBody.buyerUsername,
+                gigBasicTitle: reqBody.gigBasicTitle,
+                gigCoverImage: reqBody.gigCoverImage,
+                sellerUsername: reqBody.sellerUsername,
+                gigBasicDescription: reqBody.gigBasicDescription,
+                requirements: reqBody?.requirements ?? "",
+                paymentIntent: reqBody?.paymentIntent ?? "",
+                orderId: `JO${generateRandomNumber(11)}`,
+                invoiceId: `JI${generateRandomNumber(11)}`,
+                serviceFee: serviceFee,
+                dateOrdered: reqBody.dateOrdered
+            }
+            const order: IOrderDocument =
+                await this.orderService.createOrder(orderData)
 
-        return order
+            return order
+        } catch (error) {
+            console.log(error)
+            throw error
+        }
     }
 
     async getOrderbyOrderId(orderId: string): Promise<IOrderDocument> {
@@ -204,9 +229,9 @@ export class OrderHandler {
         const order: IOrderDocument =
             type === "approve"
                 ? await this.orderService.approveExtensionDeliveryDate(
-                    orderId,
-                    res.data
-                )
+                      orderId,
+                      res.data
+                  )
                 : await this.orderService.rejectExtensionDeliveryDate(orderId)
 
         return order

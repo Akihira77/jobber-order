@@ -10,6 +10,7 @@ import { OrderQueue } from "@order/queues/order.queue"
 import { OrderService } from "@order/services/order.service"
 import { OrderNotificationService } from "@order/services/orderNotification.service"
 import { Logger } from "winston"
+import { createSocketIO } from "../../../server"
 
 const logger = (moduleName?: string): Logger =>
     winstonLogger(
@@ -77,8 +78,9 @@ describe("Create method", () => {
     let orderService: OrderService
     beforeAll(async () => {
         await databaseConnection()
-        orderNotificationService = new OrderNotificationService(logger)
-        const queue = new OrderQueue(logger)
+        const socket = await createSocketIO(logger)
+        orderNotificationService = new OrderNotificationService(socket, logger)
+        const queue = new OrderQueue(socket, logger)
         const conn = await queue.createConnection()
         const ch = await conn.createChannel()
         orderService = new OrderService(queue, ch, orderNotificationService)

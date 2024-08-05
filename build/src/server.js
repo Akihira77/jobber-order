@@ -12,10 +12,11 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.consumeMQOrderObject = exports.pubMQOrderObject = exports.socketIOOrderObject = void 0;
+exports.pubMQOrderObject = void 0;
 exports.setupHono = setupHono;
 exports.start = start;
 exports.startElasticSearch = startElasticSearch;
+exports.createSocketIO = createSocketIO;
 const http_1 = __importDefault(require("http"));
 const fast_jwt_1 = require("fast-jwt");
 const jobber_shared_1 = require("@Akihira77/jobber-shared");
@@ -26,7 +27,6 @@ const timeout_1 = require("hono/timeout");
 const csrf_1 = require("hono/csrf");
 const secure_headers_1 = require("hono/secure-headers");
 const body_limit_1 = require("hono/body-limit");
-const hono_rate_limiter_1 = require("hono-rate-limiter");
 const http_exception_1 = require("hono/http-exception");
 const routes_1 = require("./routes");
 const http_status_codes_1 = require("http-status-codes");
@@ -37,23 +37,33 @@ const elasticsearch_1 = require("./elasticsearch");
 const uWebSockets_js_1 = require("uWebSockets.js");
 const socket_io_1 = require("socket.io");
 const LIMIT_TIMEOUT = 3 * 1000; // 3s
-function setupHono(app, logger) {
+function setupHono(app, socket, logger) {
     return __awaiter(this, void 0, void 0, function* () {
         if (!logger) {
             logger = (location) => (0, jobber_shared_1.winstonLogger)(`${config_1.ELASTIC_SEARCH_URL}`, location !== null && location !== void 0 ? location : "server.ts", "debug");
         }
-        const { queue, ch } = yield startQueues(logger);
+        const { queue, ch } = yield startQueues(socket, logger);
         orderErrorHandler(app);
         securityMiddleware(app);
         standardMiddleware(app);
-        routesMiddleware(app, queue, ch, logger);
+        routesMiddleware(app, socket, queue, ch, logger);
         return app;
     });
 }
 function start(app, logger) {
     return __awaiter(this, void 0, void 0, function* () {
         startElasticSearch(logger);
-        app = yield setupHono(app, logger);
+        const socket = yield createSocketIO(logger);
+        socket.engine.on("connection", (rawSocket) => {
+            rawSocket.request = null;
+        });
+        socket.on("connection", (socket) => {
+            logger("server.ts - startServer()").info(`Socket receive a connection with id: ${socket.id}`);
+            socket.on("disconnect", (reason) => {
+                logger("server.ts - startServer()").info(`Socket with id: ${socket.id} disconnected with reason: ${reason.toString()}`);
+            });
+        });
+        app = yield setupHono(app, socket, logger);
         startServer(app, logger);
     });
 }
@@ -98,29 +108,28 @@ function standardMiddleware(app) {
             return c.text("Your request is too big", http_status_codes_1.StatusCodes.REQUEST_HEADER_FIELDS_TOO_LARGE);
         }
     }));
-    const generateRandomNumber = (length) => {
-        return (Math.floor(Math.random() * (9 * Math.pow(10, length - 1))) +
-            Math.pow(10, length - 1));
-    };
-    app.use((0, hono_rate_limiter_1.rateLimiter)({
-        windowMs: 1 * 60 * 1000, //60s
-        limit: 10,
-        standardHeaders: "draft-6",
-        keyGenerator: () => generateRandomNumber(12).toString()
-    }));
+    //    app.use(
+    //        rateLimiter({
+    //            windowMs: 10 * 60 * 1000, // 600s
+    //            limit: 100,
+    //            standardHeaders: "draft-6",
+    //            keyGenerator: (c: Context) => {
+    //                return c.req.url
+    //            }
+    //        })
+    //    )
 }
-function routesMiddleware(app, queue, ch, logger) {
-    (0, routes_1.appRoutes)(app, queue, ch, logger);
+function routesMiddleware(app, socket, queue, ch, logger) {
+    (0, routes_1.appRoutes)(app, socket, queue, ch, logger);
 }
-function startQueues(logger) {
+function startQueues(socket, logger) {
     return __awaiter(this, void 0, void 0, function* () {
-        const queue = new order_queue_1.OrderQueue(logger);
+        const queue = new order_queue_1.OrderQueue(socket, logger);
         const pub = yield queue.createConnection();
         const consume = yield queue.createConnection();
         const pubCh = yield pub.createChannel();
         const consumeCh = yield consume.createChannel();
         exports.pubMQOrderObject = queue;
-        exports.consumeMQOrderObject = queue;
         queue.consumeReviewFanoutMessage(consumeCh);
         return { queue: queue, ch: pubCh };
     });
@@ -152,16 +161,6 @@ function startServer(app, logger) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
             startHttpServer(app, logger);
-            exports.socketIOOrderObject = yield createSocketIO(logger);
-            exports.socketIOOrderObject.engine.on("connection", (rawSocket) => {
-                rawSocket.request = null;
-            });
-            exports.socketIOOrderObject.on("connection", (socket) => {
-                logger("server.ts - startServer()").info(`Socket receive a connection with id: ${socket.id}`);
-                socket.on("disconnect", (reason) => {
-                    logger("server.ts - startServer()").info(`Socket with id: ${socket.id} disconnected with reason: ${reason.toString()}`);
-                });
-            });
         }
         catch (error) {
             console.log(error);

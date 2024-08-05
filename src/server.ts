@@ -19,7 +19,6 @@ import { timeout } from "hono/timeout"
 import { csrf } from "hono/csrf"
 import { secureHeaders } from "hono/secure-headers"
 import { bodyLimit } from "hono/body-limit"
-import { rateLimiter } from "hono-rate-limiter"
 import { HTTPException } from "hono/http-exception"
 import { appRoutes } from "@order/routes"
 import { Logger } from "winston"
@@ -34,13 +33,12 @@ import { DisconnectReason, Server, Socket } from "socket.io"
 import { ServerType } from "@hono/node-server/dist/types"
 import { Channel } from "amqplib"
 
-export let socketIOOrderObject: Server
 export let pubMQOrderObject: OrderQueue
-export let consumeMQOrderObject: OrderQueue
 const LIMIT_TIMEOUT = 3 * 1000 // 3s
 
 export async function setupHono(
     app: Hono,
+    socket: Server,
     logger?: (location?: string) => Logger
 ): Promise<Hono> {
     if (!logger) {
@@ -52,11 +50,11 @@ export async function setupHono(
             )
     }
 
-    const { queue, ch } = await startQueues(logger)
+    const { queue, ch } = await startQueues(socket, logger)
     orderErrorHandler(app)
     securityMiddleware(app)
     standardMiddleware(app)
-    routesMiddleware(app, queue, ch, logger)
+    routesMiddleware(app, socket, queue, ch, logger)
 
     return app
 }
@@ -66,7 +64,25 @@ export async function start(
     logger: (moduleName?: string) => Logger
 ): Promise<void> {
     startElasticSearch(logger)
-    app = await setupHono(app, logger)
+    const socket = await createSocketIO(logger)
+
+    socket.engine.on("connection", (rawSocket) => {
+        rawSocket.request = null
+    })
+
+    socket.on("connection", (socket: Socket) => {
+        logger("server.ts - startServer()").info(
+            `Socket receive a connection with id: ${socket.id}`
+        )
+
+        socket.on("disconnect", (reason: DisconnectReason) => {
+            logger("server.ts - startServer()").info(
+                `Socket with id: ${socket.id} disconnected with reason: ${reason.toString()}`
+            )
+        })
+    })
+
+    app = await setupHono(app, socket, logger)
     startServer(app, logger)
 }
 
@@ -126,43 +142,39 @@ function standardMiddleware(app: Hono): void {
         })
     )
 
-    const generateRandomNumber = (length: number): number => {
-        return (
-            Math.floor(Math.random() * (9 * Math.pow(10, length - 1))) +
-            Math.pow(10, length - 1)
-        )
-    }
-
-    app.use(
-        rateLimiter({
-            windowMs: 1 * 60 * 1000, //60s
-            limit: 10,
-            standardHeaders: "draft-6",
-            keyGenerator: () => generateRandomNumber(12).toString()
-        })
-    )
+    //    app.use(
+    //        rateLimiter({
+    //            windowMs: 10 * 60 * 1000, // 600s
+    //            limit: 100,
+    //            standardHeaders: "draft-6",
+    //            keyGenerator: (c: Context) => {
+    //                return c.req.url
+    //            }
+    //        })
+    //    )
 }
 
 function routesMiddleware(
     app: Hono,
+    socket: Server,
     queue: OrderQueue,
     ch: Channel,
     logger: (moduleName: string) => Logger
 ): void {
-    appRoutes(app, queue, ch, logger)
+    appRoutes(app, socket, queue, ch, logger)
 }
 
 async function startQueues(
+    socket: Server,
     logger: (moduleName: string) => Logger
 ): Promise<{ queue: OrderQueue; ch: Channel }> {
-    const queue = new OrderQueue(logger)
+    const queue = new OrderQueue(socket, logger)
     const pub = await queue.createConnection()
     const consume = await queue.createConnection()
     const pubCh = await pub.createChannel()
     const consumeCh = await consume.createChannel()
 
     pubMQOrderObject = queue
-    consumeMQOrderObject = queue
     queue.consumeReviewFanoutMessage(consumeCh)
 
     return { queue: queue, ch: pubCh }
@@ -207,29 +219,12 @@ async function startServer(
 ): Promise<void> {
     try {
         startHttpServer(app, logger)
-        socketIOOrderObject = await createSocketIO(logger)
-
-        socketIOOrderObject.engine.on("connection", (rawSocket) => {
-            rawSocket.request = null
-        })
-
-        socketIOOrderObject.on("connection", (socket: Socket) => {
-            logger("server.ts - startServer()").info(
-                `Socket receive a connection with id: ${socket.id}`
-            )
-
-            socket.on("disconnect", (reason: DisconnectReason) => {
-                logger("server.ts - startServer()").info(
-                    `Socket with id: ${socket.id} disconnected with reason: ${reason.toString()}`
-                )
-            })
-        })
     } catch (error) {
         console.log(error)
     }
 }
 
-async function createSocketIO(
+export async function createSocketIO(
     logger: (moduleName: string) => Logger
 ): Promise<Server> {
     const uwsApp = App()

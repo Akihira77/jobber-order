@@ -20,7 +20,8 @@ const amqplib_1 = __importDefault(require("amqplib"));
 const typia_1 = __importDefault(require("typia"));
 const server_1 = require("../server");
 class OrderQueue {
-    constructor(logger) {
+    constructor(socket, logger) {
+        this.socket = socket;
         this.logger = logger;
     }
     createConnection() {
@@ -40,7 +41,6 @@ class OrderQueue {
     publishDirectMessage(ch, exchangeName, routingKey, message, logMessage) {
         return __awaiter(this, void 0, void 0, function* () {
             try {
-                yield ch.assertExchange(exchangeName, "direct");
                 ch.publish(exchangeName, routingKey, Buffer.from(message));
                 // this.logger(
                 //     "queues/order.producer.ts - publishDirectMessage()"
@@ -72,7 +72,7 @@ class OrderQueue {
                             const { gigReview } = (input => { const is = input => {
                                 return true;
                             }; input = JSON.parse(input); return is(input) ? input : null; })(msg.content.toString());
-                            const notificationSvc = new orderNotification_service_1.OrderNotificationService(this.logger);
+                            const notificationSvc = new orderNotification_service_1.OrderNotificationService(this.socket, this.logger);
                             const orderSvc = new order_service_1.OrderService(server_1.pubMQOrderObject, ch, notificationSvc);
                             yield orderSvc.updateOrderReview(gigReview);
                             ch.ack(msg);

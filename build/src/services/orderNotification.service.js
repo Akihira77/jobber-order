@@ -13,10 +13,10 @@ exports.OrderNotificationService = void 0;
 const jobber_shared_1 = require("@Akihira77/jobber-shared");
 const order_model_1 = require("../models/order.model");
 const orderNotification_model_1 = require("../models/orderNotification.model");
-const server_1 = require("../server");
 const mongoose_1 = require("mongoose");
 class OrderNotificationService {
-    constructor(logger) {
+    constructor(socket, logger) {
+        this.socket = socket;
         this.logger = logger;
     }
     createNotification(request) {
@@ -70,7 +70,7 @@ class OrderNotificationService {
                 })
                     .lean()
                     .exec();
-                server_1.socketIOOrderObject === null || server_1.socketIOOrderObject === void 0 ? void 0 : server_1.socketIOOrderObject.emit("order_notification", order);
+                this.socket.emit("order_notification", order);
                 return notification;
             }
             catch (error) {
@@ -96,7 +96,7 @@ class OrderNotificationService {
                     createdAt: new Date()
                 };
                 const orderNotification = yield this.createNotification(notificationData);
-                server_1.socketIOOrderObject === null || server_1.socketIOOrderObject === void 0 ? void 0 : server_1.socketIOOrderObject.emit("order_notification", request, orderNotification);
+                this.socket.emit("order_notification", request, orderNotification);
             }
             catch (error) {
                 console.log(error);

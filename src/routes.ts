@@ -10,12 +10,14 @@ import { OrderHandler } from "./handler/order.handler"
 import { GATEWAY_JWT_TOKEN } from "./config"
 import { OrderQueue } from "./queues/order.queue"
 import { Channel } from "amqplib"
+import { Server } from "socket.io"
 
 // const BASE_PATH = "/api/v1/order";
 const BASE_PATH = "/order"
 
 export function appRoutes(
     app: Hono,
+    socket: Server,
     queue: OrderQueue,
     ch: Channel,
     logger: (moduleName: string) => Logger
@@ -24,7 +26,7 @@ export function appRoutes(
         return c.text("Order service is healthy and OK.", StatusCodes.OK)
     })
 
-    const notificationSvc = new OrderNotificationService(logger)
+    const notificationSvc = new OrderNotificationService(socket, logger)
     const orderSvc = new OrderService(queue, ch, notificationSvc)
     const orderHndlr = new OrderHandler(orderSvc, notificationSvc)
 

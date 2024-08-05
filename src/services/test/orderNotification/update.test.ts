@@ -16,6 +16,7 @@ import { OrderService } from "@order/services/order.service"
 import { OrderNotificationService } from "@order/services/orderNotification.service"
 import cloudinary from "cloudinary"
 import { Logger } from "winston"
+import { createSocketIO } from "../../../server"
 
 const offer: IOffer = {
     gigTitle:
@@ -88,10 +89,11 @@ let orderService: OrderService
 describe("Update method", () => {
     beforeAll(async () => {
         await databaseConnection()
-        const queue = new OrderQueue(logger)
+        const socket = await createSocketIO(logger)
+        const queue = new OrderQueue(socket, logger)
         const conn = await queue.createConnection()
         const ch = await conn.createChannel()
-        orderNotificationService = new OrderNotificationService(logger)
+        orderNotificationService = new OrderNotificationService(socket, logger)
         orderService = new OrderService(queue, ch, orderNotificationService)
         await orderService.createOrder(data)
     })

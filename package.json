@@ -3,9 +3,9 @@
   "version": "1.0.0",
   "main": "app.js",
   "scripts": {
-    "start:dev": "NODE_ENV=development&&nodemon -r tsconfig-paths/register src/app.ts | pino-pretty -c",
+    "start:dev": "NODE_ENV=development nodemon -r tsconfig-paths/register src/app.ts | pino-pretty -c",
     "start:prod": "NODE_ENV=production&&pm2 start ./build/src/app.js -i 1 --name Order_Service --trace | pino-pretty -c",
-    "start": "NODE_ENV=production node --trace-warnings build/src/app.js -order",
+    "start":"NODE_ENV=production node build/src/app.js -order",
     "dev": "NODE_ENV=production node --trace-warnings --inspect build/src/app.js",
     "start:pm": "NODE_ENV=production&&pm2 start ./build/src/app.js -i max --name Order_Service --trace | pino-pretty -c",
     "stop": "pm2 stop all",

@@ -21,9 +21,9 @@ import { Channel } from "amqplib"
 export class OrderService {
     constructor(
         private queue: OrderQueue,
-        private pubCh: Channel,
+        private readonly pubCh: Channel,
         private orderNotificationService: OrderNotificationService
-    ) { }
+    ) {}
 
     async getOrderByOrderId(orderId: string): Promise<IOrderDocument> {
         try {
@@ -561,33 +561,33 @@ export class OrderService {
                     $set:
                         data.type === "buyer-review"
                             ? {
-                                buyerReview: {
-                                    rating: data.rating,
-                                    review: data.review,
-                                    created: data.createdAt
-                                        ? new Date(data.createdAt)
-                                        : new Date()
-                                },
-                                events: {
-                                    buyerReview: data.createdAt
-                                        ? new Date(data.createdAt)
-                                        : new Date()
-                                }
-                            }
+                                  buyerReview: {
+                                      rating: data.rating,
+                                      review: data.review,
+                                      created: data.createdAt
+                                          ? new Date(data.createdAt)
+                                          : new Date()
+                                  },
+                                  events: {
+                                      buyerReview: data.createdAt
+                                          ? new Date(data.createdAt)
+                                          : new Date()
+                                  }
+                              }
                             : {
-                                sellerReview: {
-                                    rating: data.rating,
-                                    review: data.review,
-                                    created: data.createdAt
-                                        ? new Date(data.createdAt)
-                                        : new Date()
-                                },
-                                events: {
-                                    sellerReview: data.createdAt
-                                        ? new Date(data.createdAt)
-                                        : new Date()
-                                }
-                            }
+                                  sellerReview: {
+                                      rating: data.rating,
+                                      review: data.review,
+                                      created: data.createdAt
+                                          ? new Date(data.createdAt)
+                                          : new Date()
+                                  },
+                                  events: {
+                                      sellerReview: data.createdAt
+                                          ? new Date(data.createdAt)
+                                          : new Date()
+                                  }
+                              }
                 },
                 { new: true }
             ).exec()

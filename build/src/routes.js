@@ -19,11 +19,11 @@ const order_handler_1 = require("./handler/order.handler");
 const config_1 = require("./config");
 // const BASE_PATH = "/api/v1/order";
 const BASE_PATH = "/order";
-function appRoutes(app, queue, ch, logger) {
+function appRoutes(app, socket, queue, ch, logger) {
     app.get("/order-health", (c) => {
         return c.text("Order service is healthy and OK.", http_status_codes_1.StatusCodes.OK);
     });
-    const notificationSvc = new orderNotification_service_1.OrderNotificationService(logger);
+    const notificationSvc = new orderNotification_service_1.OrderNotificationService(socket, logger);
     const orderSvc = new order_service_1.OrderService(queue, ch, notificationSvc);
     const orderHndlr = new order_handler_1.OrderHandler(orderSvc, notificationSvc);
     const api = app.basePath(BASE_PATH);
